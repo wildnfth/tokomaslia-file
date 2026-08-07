@@ -129,6 +129,27 @@ baru yang tertinggal selain hasil update dan backup-nya.
 
 ---
 
+## Git (commit & push setelah setiap update)
+
+Setelah update berhasil, validasi OK, dan pembersihan temp selesai, jalankan
+git untuk mencatat perubahan ke GitHub. Di environment ini `git` terpasang di
+`C:\Program Files\Git\cmd\git.exe` (tidak ada di PATH), jadi gunakan path
+eksplisit.
+
+```powershell
+cd "D:\TOKO MAS LIA\DOKUMEN"
+$git = "C:\Program Files\Git\cmd\git.exe"
+& $git add -A
+& $git commit -m "update harga <tanggal> - <ringkas perubahan, mis. UBS +30, EMAS 7 AGUSTUS 2026>"
+& $git push origin main
+```
+
+- `git add -A` menambah semua perubahan file (Excel + skill jika ada yang diubah).
+- Pesan commit harus **singkat dan jelas**.
+- Jika push ditolak karena branch behind, tarik dulu (`git pull --rebase`) lalu push ulang.
+
+---
+
 ## Tips eksekusi (pembelajaran agar lebih cepat)
 - **JANGAN jalankan kode inspeksi/verifikasi lewat `python -c`.** Di PowerShell,
   tanda kutip di dalam string (mis. `f = "TEMPLATE HARGA MAS2.xlsx"`) ikut
