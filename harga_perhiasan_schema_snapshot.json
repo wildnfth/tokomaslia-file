@@ -1,0 +1,418 @@
+{
+  "meta": {
+    "file": "harga_perhiasan.db",
+    "format": "SQLite 3",
+    "tanggal_format": "YYYY-MM-DD",
+    "mata_uang": "Rupiah (integer = ribuan, contoh 2740 = Rp 2.740.000 untuk LM batangan 1g)",
+    "perhiasan_satuan": "Rp per gram (harga_pembulatan = yang dipakai display/toko)",
+    "lm_emas": "Antam + Galeri24 logam mulia emas",
+    "lm_perak": "tabel harga_perak (bukan emas)"
+  },
+  "snapshot_tanggal": {
+    "lm_emas": "2026-07-01",
+    "perhiasan": "2026-06-30",
+    "perak": "2026-06-29"
+  },
+  "harga_antam_latest": [
+    {
+      "tanggal": "2026-07-01",
+      "gram": 0.5,
+      "harga_antam": 1415,
+      "harga_set": 1450,
+      "harga_retro": 1285
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 1.0,
+      "harga_antam": 2680,
+      "harga_set": 2720,
+      "harga_retro": 2490
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 2.0,
+      "harga_antam": 5240,
+      "harga_set": 5320,
+      "harga_retro": 4940
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 3.0,
+      "harga_antam": 7810,
+      "harga_set": 7930,
+      "harga_retro": 7410
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 5.0,
+      "harga_antam": 12950,
+      "harga_set": 13200,
+      "harga_retro": 12250
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 10.0,
+      "harga_antam": 25450,
+      "harga_set": 25850,
+      "harga_retro": 24500
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 25.0,
+      "harga_antam": 63175,
+      "harga_set": 63725,
+      "harga_retro": 61000
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 50.0,
+      "harga_antam": 125500,
+      "harga_set": 127500,
+      "harga_retro": 123500
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 100.0,
+      "harga_antam": 251000,
+      "harga_set": 254500,
+      "harga_retro": 249000
+    }
+  ],
+  "harga_galeri24_latest": [
+    {
+      "tanggal": "2026-07-01",
+      "gram": 1.0,
+      "harga": 2585
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 2.0,
+      "harga": 5100
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 5.0,
+      "harga": 12625
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 10.0,
+      "harga": 25100
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 25.0,
+      "harga": null
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 50.0,
+      "harga": 124250
+    },
+    {
+      "tanggal": "2026-07-01",
+      "gram": 100.0,
+      "harga": 246500
+    }
+  ],
+  "harga_perhiasan_latest": [
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "10K",
+      "warna": "KUNING",
+      "harga_awal": 1225.8,
+      "harga_pembulatan": 1225
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "10K",
+      "warna": "PUTIH",
+      "harga_awal": 1271.2,
+      "harga_pembulatan": 1270
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "16K",
+      "warna": "KUNING",
+      "harga_awal": 1725.2,
+      "harga_pembulatan": 1725
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "16K",
+      "warna": "PUTIH",
+      "harga_awal": 1747.9,
+      "harga_pembulatan": 1750
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "16K",
+      "warna": "ROSE GOLD",
+      "harga_awal": 1759.25,
+      "harga_pembulatan": 1760
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "17K",
+      "warna": "KUNING",
+      "harga_awal": 1884.1,
+      "harga_pembulatan": 1885
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "17K",
+      "warna": "PUTIH",
+      "harga_awal": 1929.5,
+      "harga_pembulatan": 1930
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "17K",
+      "warna": "ROSE GOLD",
+      "harga_awal": 1918.15,
+      "harga_pembulatan": 1920
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "18K",
+      "warna": "KUNING",
+      "harga_awal": 1997.6,
+      "harga_pembulatan": 2000
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "18K",
+      "warna": "PUTIH",
+      "harga_awal": 2043.9,
+      "harga_pembulatan": 2045
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "20K (875)",
+      "warna": "KUNING",
+      "harga_awal": 2122.45,
+      "harga_pembulatan": 2120
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "21K (916)/9A",
+      "warna": "KUNING",
+      "harga_awal": 2179.2,
+      "harga_pembulatan": 2180
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "6K",
+      "warna": "KUNING",
+      "harga_awal": 794.5,
+      "harga_pembulatan": 795
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "6K",
+      "warna": "PUTIH",
+      "harga_awal": 817.2,
+      "harga_pembulatan": 815
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "6K",
+      "warna": "ROSE GOLD",
+      "harga_awal": 817.2,
+      "harga_pembulatan": 815
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "8K",
+      "warna": "KUNING",
+      "harga_awal": 998.6,
+      "harga_pembulatan": 1000
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "8K",
+      "warna": "PUTIH",
+      "harga_awal": 1044.2,
+      "harga_pembulatan": 1045
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "8K",
+      "warna": "ROSE GOLD",
+      "harga_awal": 1021.5,
+      "harga_pembulatan": 1020
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9B",
+      "warna": "KUNING",
+      "harga_awal": 2270.0,
+      "harga_pembulatan": 2270
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9C",
+      "warna": "KUNING",
+      "harga_awal": 2383.5,
+      "harga_pembulatan": 2385
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9C PABRIK",
+      "warna": "KUNING",
+      "harga_awal": 2497.0,
+      "harga_pembulatan": 2495
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9K",
+      "warna": "KUNING",
+      "harga_awal": 1135.0,
+      "harga_pembulatan": 1135
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9K",
+      "warna": "PUTIH",
+      "harga_awal": 1180.4,
+      "harga_pembulatan": 1180
+    },
+    {
+      "tanggal": "2026-06-30",
+      "kadar": "9K",
+      "warna": "ROSE GOLD",
+      "harga_awal": 1157.7,
+      "harga_pembulatan": 1160
+    }
+  ],
+  "harga_perak_latest": [
+    {
+      "tanggal": "2026-06-29",
+      "merek": "ANTAM",
+      "berat_gram": 500.0,
+      "harga_per_gram": null,
+      "harga_total": 25000000,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "EURO",
+      "berat_gram": 250.0,
+      "harga_per_gram": 63.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "LOTUS",
+      "berat_gram": 50.0,
+      "harga_per_gram": 54.5,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "LOTUS",
+      "berat_gram": 100.0,
+      "harga_per_gram": 52.5,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "LOTUS",
+      "berat_gram": 250.0,
+      "harga_per_gram": 51.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "LOTUS",
+      "berat_gram": 500.0,
+      "harga_per_gram": 49.5,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "MT",
+      "berat_gram": 5.0,
+      "harga_per_gram": 64.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "MT",
+      "berat_gram": 10.0,
+      "harga_per_gram": 62.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "MT",
+      "berat_gram": 100.0,
+      "harga_per_gram": 52.5,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "MT",
+      "berat_gram": 250.0,
+      "harga_per_gram": null,
+      "harga_total": null,
+      "keterangan": "-"
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "MT",
+      "berat_gram": 1000.0,
+      "harga_per_gram": 47.5,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "SIMBA",
+      "berat_gram": 1000.0,
+      "harga_per_gram": 50.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "STAR SILVER",
+      "berat_gram": 5.0,
+      "harga_per_gram": 69.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "STAR SILVER",
+      "berat_gram": 10.0,
+      "harga_per_gram": 65.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "STAR SILVER",
+      "berat_gram": 25.0,
+      "harga_per_gram": 64.0,
+      "harga_total": null,
+      "keterangan": null
+    },
+    {
+      "tanggal": "2026-06-29",
+      "merek": "STAR SILVER",
+      "berat_gram": 50.0,
+      "harga_per_gram": 56.0,
+      "harga_total": null,
+      "keterangan": null
+    }
+  ]
+}

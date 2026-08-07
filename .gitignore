@@ -1,0 +1,13 @@
+# File kunci sementara (muncul saat file Excel/Word sedang dibuka)
+~$*.xlsx
+~$*.docx
+~$*.xls
+~$*.doc
+
+# Backup / file temp
+*.bak
+*.tmp
+Thumbs.db
+
+# File sensitif & data internal (komentari/hapus jika ingin ikut di-upload)
+# harga_perhiasan.db
