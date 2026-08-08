@@ -1,0 +1,53 @@
+===============================================================
+     PANDUAN PENGGUNAAN DOKUMEN TOKO MAS LIA
+     Git + Git LFS + GitHub - Versi 1.0
+===============================================================
+
+📁 LOKASI FILE:
+   D:\TOKO MAS LIA\DOKUMEN\
+
+📋 FILE SCRIPTS YANG TERSEDIA:
+   1. dokumen-tools.bat    - Menu utama (semua fitur dalam satu)
+   2. save_and_push.bat    - Langsung simpan dan push ke GitHub
+   3. view_history.bat     - Lihat riwayat perubahan file
+   4. restore_file.bat     - Kembalikan file ke versi sebelumnya
+
+💾 ALUR KERJA HARIAN (Setelah Edit File):
+   1. Buka folder D:\TOKO MAS LIA\DOKUMEN
+   2. Klik ganda dokumen-tools.bat
+   3. Pilih menu 1 untuk simpan dan push
+   4. Masukkan pesan singkat tentang perubahan
+   5. Tekan Enter, dan semua perubahan terupload ke GitHub!
+
+   ATAU cara lebih cepat:
+   - Klik ganda save_and_push.bat
+   - Masukkan pesan commit atau biarkan kosong (auto)
+   - Selesai!
+
+🔍 MELIHAT RIWAYAT PERUBAHAN:
+   - Buka Command Prompt di folder ini
+   - Jalankan: git log --oneline --follow "nama_file.xlsx"
+   - Atau gunakan view_history.bat
+
+↩️ MENGembalikan FILE KE VERSI SEBELUMNYA:
+   - Jalankan restore_file.bat
+   - Masukkan nama file yang ingin dikembalikan
+   - Pilih commit yang sesuai dari riwayat
+   - Konfirmasi, dan file akan dikembalikan
+
+📝 CONTOH PESAN COMMIT YANG BAIK:
+   - "Update ABSENSI TOKO tanggal 15/08/2026"
+   - "Perbaikan formula SLIP GAJI"
+   - "Tambahan data stok ETALASE"
+
+⚠️ PENTING:
+   - Jika Anda melihat pesan "[ERROR] Gagal push", periksa koneksi internet
+   - Jika ada konflik saat pull, file akan diberi nama "_CONFLICT"
+   - Selalu gunakan script ini, jangan edit file Git langsung
+   - File backup ZIP akan tersimpan di folder "backup\"
+
+📞 BANTUAN:
+   Hubungi tim IT jika ada masalah teknis.
+   Repository GitHub: https://github.com/liagoldeditor/tokomaslia-file
+
+===============================================================
