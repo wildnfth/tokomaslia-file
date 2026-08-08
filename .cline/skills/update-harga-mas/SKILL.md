@@ -168,3 +168,81 @@ $git = "C:\Program Files\Git\cmd\git.exe"
 - Backup otomatis DIHIDUPKAN (jangan `--no-backup` tanpa alasan).
 - Konfirmasi tanggal & nominal ke pengguna bila tidak jelas.
 - Jangan ubah format (font/size/warna/background/merge) selain nilai yang diminta.
+
+---
+
+## Git & Backup (Update Penting)
+
+Sistem Git + Git LFS sudah terpasang dan dikonfigurasi untuk melacat semua file dokumen di folder ini. Ini berarti:
+
+### Kemampuan Sistem
+- **Riwayat penuh**: Setiap perubahan pada file terlacat otomatis
+- **Audit trail**: Dapat melihat siapa mengubah apa kapan saja
+- **Restore fleksibel**: Dapat kembali ke versi file lama kapan saja
+- **Backup otomatis**: Semua perubahan di-push ke GitHub (private repo)
+
+### Repository Status
+- **GitHub**: https://github.com/liagoldeditor/tokomaslia-file
+- **Lokasi lokal**: D:\TOKO MAS LIA\DOKUMEN\
+- **Branch**: main
+- **File**: Semua file .docx, .xlsx, .pptx dilacat dengan Git LFS
+
+### Alur Simpan yang Direkomendasikan
+
+Setelah memodifikasi file, gunakan salah satu cara ini:
+
+**Cara 1 - Manual (PowerShell):**
+```powershell
+cd "D:\TOKO MAS LIA\DOKUMEN"
+$git = "C:\Program Files\Git\cmd\git.exe"
+& $git add -A
+& $git commit -m "update harga [tanggal] - [deskripsi singkat]"
+& $git push origin main
+```
+
+**Cara 2 - Script otomatis (lebih mudah):**
+```
+Klik dobel "D:\TOKO MAS LIA\DOKUMEN\save_and_push.bat"
+```
+
+### Melihat Riwayat Perubahan
+```bash
+# Lihat semua commit
+git log --oneline --graph --all
+
+# Lihat riwayat file tertentu
+git log --oneline --follow "TEMPLATE HARGA MAS2.xlsx"
+
+# Lihat detail perubahan dalam commit tertentu
+git show [commit-hash] --stat
+```
+
+### Mengembalikan File ke Versi Lama
+```bash
+# Cari commit yang diinginkan
+git log --oneline --follow "TEMPLATE HARGA MAS2.xlsx"
+
+# Kembalikan file ke versi tersebut
+git checkout [commit-hash] -- "TEMPLATE HARGA MAS2.xlsx"
+```
+
+Atau gunakan script interaktif:
+```
+Klik dobel "D:\TOKO MAS LIA\DOKUMEN\dokumen-tools.bat"
+Pilih menu 2 untuk riwayat, menu 3 untuk restore
+```
+
+### File Pendukung
+| File | Fungsi |
+|------|--------|
+| `dokumen-tools.bat` | Menu utama semua operasi Git |
+| `save_and_push.bat` | Simpan & push cepat |
+| `view_history.bat` | Lihat riwayat perubahan |
+| `restore_file.bat` | Kembalikan file lama |
+| `PANDUAN_PENGGUNAAN.txt` | Panduan penggunaan |
+
+### Catatan Penting
+- `TEMPLATE HARGA MAS2.xlsx` sudah dilacat oleh Git LFS, perubahan tidak akan tersambar lagi
+- File `*_BACKUP_*.xlsx` juga ikut dilacat Git secara otomatis
+- Setiap ekseskusi skill ini, perubahan akan tersedia di riwayat GitHub
+- Tidak perlu lagi khawatir kehilangan versi lama dokumen
