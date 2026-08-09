@@ -1,205 +1,297 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Update HARGA ANTAM (sheet ANTAM) — TAMBAH blok harian baru.
-Pola: salin blok harga terakhir, tambah 1 baris kosong, update harga naik/turun
-sesuai --step, ganti tanggal, pertahankan format sel MERAH = KOSONG.
+SKILL: update-harga-antam (v2 fleksibel)
+========================================
+Mengelola blok harga ANTAM di sheet ANTAM, file TEMPLATE HARGA MAS2.xlsx.
 
-Jalankan:
-    python update_harga_antam.py "TEMPLATE HARGA MAS2.xlsx" --date "8 AGUSTUS 2026" --step -40
-    python update_harga_antam.py "TEMPLATE HARGA MAS2.xlsx" --date "8 AGUSTUS 2026" --step -40 --dry-run
+DUA MODE:
+  1) add   (default) - TAMBAH blok harian baru: menyalin blok terakhir ke
+                       bawah (pola 1 baris kosong), menyesuaikan harga sesuai
+                       target/gramasi yg diminta, mengganti label tanggal.
+  2) update - MENGUBAH harga pada blok TERAKHIR yg SUDAH ADA (di tempat,
+              TANPA menambah blok baru). Berguna utk menyesuaikan harga
+              kolom tertentu tanpa blok harian baru.
+
+TARGET SELEKTIF (--targets):
+  antam      = semua kolom ANTAM (RETRO, RANDOM, 2025, 2026)  [default]
+  retro      = kolom B (RETRO)
+  random     = kolom C (RANDOM)
+  2025       = kolom D
+  2026       = kolom E
+  galeri24   = kolom H
+  ubs        = kolom L (UBS Batik)
+  Bisa gabung dgn koma, mis. --targets "2025,ubs".
+
+FILTER GRAMASI (--grams):
+  --grams "1,2,5"  hanya ubah baris dgn gramasi tsb.
+
+CONTOH:
+  python update_harga_antam.py <file> --date "8 AGUSTUS 2026" --step 50
+  python update_harga_antam.py <file> --date "8 AGUSTUS 2026" --step 30 --targets ubs
+  python update_harga_antam.py <file> --date "8 AGUSTUS 2026" --step 40 --targets 2025 --grams "1,2"
+  python update_harga_antam.py <file> --mode update --step 25 --targets galeri24
+  # selalu mulai dgn --dry-run
 """
-
 import argparse
+import copy
 import os
 import shutil
 import sys
-from copy import copy
 from datetime import datetime
 
-try:
-    from openpyxl import load_workbook
-    from openpyxl.utils import get_column_letter
-except ImportError:
-    print("ERROR: openpyxl tidak terinstal. Jalankan: pip install openpyxl")
-    sys.exit(1)
+from openpyxl import load_workbook
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Update harga ANTAM (tambah blok baru)")
-    parser.add_argument("file", help="Path ke file Excel TEMPLATE HARGA MAS2.xlsx")
-    parser.add_argument("--date", required=True, help="Tanggal baru, contoh: '8 AGUSTUS 2026'")
-    parser.add_argument("--step", type=int, default=50, help="Kenaikan/turun per gram (default 50)")
-    parser.add_argument("--dry-run", action="store_true", help="Tampilkan preview tanpa menulis")
-    parser.add_argument("--no-backup", action="store_true", help="Nonaktifkan backup otomatis")
-    return parser.parse_args()
+HEADER_MARK = "HARGA ANTAM"
+# Kolom harga -> kolom gram masing-masing
+GRAM_COL = {2: 1, 3: 1, 4: 1, 5: 1, 8: 7, 12: 11}
+# Nama target -> daftar kolom harga
+TARGET_MAP = {
+    "retro": [2],
+    "random": [3],
+    "2025": [4],
+    "2026": [5],
+    "galeri24": [8],
+    "ubs": [12],
+}
+ANTAM_NAMES = ["retro", "random", "2025", "2026"]
 
 
-def backup_file(filepath):
-    """Buat backup file dengan timestamp."""
-    if not os.path.exists(filepath):
-        return None
-    base, ext = os.path.splitext(filepath)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = f"{base}_BACKUP_{timestamp}{ext}"
-    shutil.copy2(filepath, backup_path)
-    print(f"[BACKUP] {filepath} -> {backup_path}")
-    return backup_path
+def find_header_rows(ws):
+    """Baris-baris yg memuat header blok 'HARGA ANTAM ...' di kolom A."""
+    rows = []
+    for r in range(1, ws.max_row + 1):
+        v = ws.cell(r, 1).value
+        if isinstance(v, str) and v.strip().startswith(HEADER_MARK):
+            rows.append(r)
+    return rows
 
-def find_last_block(ws):
-    """Cari blok terakhir di sheet ANTAM (era baru)."""
-    max_row = ws.max_row
-    for r in range(max_row, 1, -1):
-        cell_a = ws.cell(row=r, column=1).value
-        if cell_a and isinstance(cell_a, str) and "HARGA ANTAM" in cell_a and "-" in cell_a:
-            metadata_row = r + 1
-            data_start = r + 2
-            data_end = data_start
-            for dr in range(data_start, max_row + 1):
-                val_a = ws.cell(row=dr, column=1).value
-                val_g = ws.cell(row=dr, column=7).value
-                if val_a is None and val_g is None:
-                    break
-                if val_a == "MERAH = KOSONG" or val_g == "MERAH = KOSONG":
-                    next_a = ws.cell(row=dr + 1, column=1).value if dr + 1 <= max_row else None
-                    next_g = ws.cell(row=dr + 1, column=7).value if dr + 1 <= max_row else None
-                    if next_a is None and next_g is None:
-                        data_end = dr
-                        break
-                data_end = dr
-            return r, data_start, data_end, metadata_row
-    raise ValueError("Tidak dapat menemukan blok HARGA ANTAM terakhir di sheet.")
 
 def copy_style(src, dst):
-    """Salin style sel (font, fill, border, format angka, alignment, protection)."""
-    dst.font = copy(src.font)
-    dst.fill = copy(src.fill)
-    dst.border = copy(src.border)
-    dst.number_format = src.number_format
-    dst.alignment = copy(src.alignment)
-    dst.protection = copy(src.protection)
+    """Salin style (font/fill/border/alignment/number_format/dll) persis."""
+    if src.has_style:
+        dst._style = copy.copy(src._style)
 
 
-def copy_block(ws, header_row, data_start, data_end, metadata_row, new_date, step, dry_run=False):
-    """Salin blok terakhir (header + metadata + data) ke bawah BESERTA FORMAT
-    (style sel, merged cells, tinggi baris), update harga & tanggal.
-    Hasilnya plek ketiplek dengan blok sumber."""
-    new_header_row = data_end + 2
-    new_metadata_row = new_header_row + 1
-    new_data_start = new_metadata_row + 1
-    delta = new_header_row - header_row
+def resolve_columns(targets_spec):
+    """Kembalikan (daftar kolom harga, set label utk laporan)."""
+    cols, labels = [], set()
+    if not targets_spec:
+        targets_spec = "antam"
+    for t in targets_spec.split(","):
+        t = t.strip().lower()
+        if t == "antam":
+            for name in ANTAM_NAMES:
+                labels.add(name)
+                cols.extend(TARGET_MAP[name])
+        elif t in TARGET_MAP:
+            labels.add(t)
+            cols.extend(TARGET_MAP[t])
+        else:
+            print("[warn] target tidak dikenal, dilewati:", t)
+    cols = list(dict.fromkeys(cols))
+    return cols, labels
 
-    new_header_a = f"HARGA ANTAM - {new_date}"
-    new_header_g = "HARGA Galeri24"
-    new_header_k = "HARGA UBS BATIK"
 
-    if dry_run:
-        print(f"[DRY-RUN] Akan menambahkan blok baru di baris {new_header_row} (COPAS nilai+style+merge+tinggi)")
+def resolve_grams(grams_spec):
+    """Kembalikan set gramasi yg diizinkan (None = semua)."""
+    if not grams_spec:
+        return None
+    out = set()
+    for g in grams_spec.split(","):
+        try:
+            out.add(float(g.strip()))
+        except ValueError:
+            print("[warn] gramasi tidak valid, dilewati:", g)
+    return out or None
 
-    # 1) Salin tinggi baris header + metadata + data
-    for r in range(header_row, data_end + 1):
-        rd = ws.row_dimensions.get(r)
-        if rd is not None and rd.height:
-            if dry_run:
-                print(f"[DRY-RUN] Baris {r + delta}: tinggi baris = {rd.height}")
-            else:
-                ws.row_dimensions[r + delta].height = rd.height
+def build_new_value(ws, wsv, sr, c, gram_filter, old_header, new_header,
+                    old_date, new_date, step, selected_cols):
+    """Hitung nilai sel tujuan utk mode add.
 
-    # 2) Kumpulkan merged cells pada area blok sumber (untuk diterapkan di blok baru)
-    merges_src = []
-    for mr in ws.merged_cells.ranges:
-        if header_row <= mr.min_row <= data_end:
-            merges_src.append((mr.min_row + delta, mr.min_col, mr.max_row + delta, mr.max_col))
+    - Teks (header/label tanggal): ganti label.
+    - Kolom harga: bila kolom TERPILIH & gramasi cocok -> +step*gram;
+      selain itu -> salin nilai sumber apa adanya (tanpa kenaikan).
+    """
+    v = ws.cell(sr, c).value
+    if isinstance(v, str):
+        if old_header and v == old_header:
+            return new_header
+        if old_date and old_date in v:
+            return v.replace(old_date, new_date)
+        return v
+    if c in GRAM_COL:
+        gsrc = ws.cell(sr, GRAM_COL[c]).value
+        try:
+            g = float(gsrc)
+        except (TypeError, ValueError):
+            return v
+        if c not in selected_cols:
+            return v
+        if gram_filter is not None and g not in gram_filter:
+            return v
+        base = v
+        if isinstance(v, str) and v.startswith("="):
+            base = wsv.cell(sr, c).value
+        try:
+            base = float(base)
+        except (TypeError, ValueError):
+            return v
+        return base + step * g
+    return v
 
-    # 3) Salin SEMUA sel (nilai + style) — col 1..16
-    total_rows = 0
-    for r in range(header_row, data_end + 1):
-        new_r = r + delta
-        for col in range(1, 17):
-            src = ws.cell(r, col)
-            if dry_run:
-                if src.value is not None:
-                    print(f"[DRY-RUN] {new_r} {get_column_letter(col)}: salin '{src.value}'")
-            else:
-                dst = ws.cell(new_r, col)
-                copy_style(src, dst)
-                dst.value = src.value
-        total_rows += 1
 
-    # 4) Update tanggal di header & metadata
-    if dry_run:
-        print(f"[DRY-RUN] Header A{new_header_row} -> '{new_header_a}'")
-        print(f"[DRY-RUN] Metadata G{new_metadata_row} & K{new_metadata_row}: tanggal -> '{new_date}'")
-    else:
-        ws.cell(new_header_row, 1, new_header_a)
-        ws.cell(new_header_row, 7, new_header_g)
-        ws.cell(new_header_row, 11, new_header_k)
-        ws.cell(new_metadata_row, 7, new_date)
-        ws.cell(new_metadata_row, 11, new_date)
-
-    # 5) Update harga per gram sesuai step (lewati baris MERAH = KOSONG)
-    price_cols = {2: "B", 3: "C", 4: "D", 5: "E", 8: "H", 9: "I", 12: "L"}
-    for i, old_row in enumerate(range(data_start, data_end + 1)):
-        new_row = new_data_start + i
-        val_a = ws.cell(old_row, 1).value
-        val_g = ws.cell(old_row, 7).value
-        if val_a == "MERAH = KOSONG" or val_g == "MERAH = KOSONG":
-            merah_col = 7 if val_g == "MERAH = KOSONG" else 1
-            if dry_run:
-                print(f"[DRY-RUN] Baris {new_row}: pertahankan MERAH = KOSONG (kol {merah_col})")
-            continue
-        for col, desc in price_cols.items():
-            val = ws.cell(old_row, col).value
-            if isinstance(val, (int, float)) and not isinstance(val, bool):
-                new_val = val + step
-                if dry_run:
-                    print(f"[DRY-RUN] {new_row} {desc}: {val:,.0f} -> {new_val:,.0f}")
-                else:
-                    ws.cell(new_row, col, new_val)
-
-    # 6) Terapkan merged cells pada blok baru (hindari duplikat)
-    if not dry_run:
-        existing = {(m.min_row, m.min_col, m.max_row, m.max_col) for m in ws.merged_cells.ranges}
-        for (mr, mc, mrr, mrc) in merges_src:
-            if (mr, mc, mrr, mrc) not in existing:
-                ws.merge_cells(start_row=mr, start_column=mc, end_row=mrr, end_column=mrc)
-
-    print(f"[INFO] Total baris blok disalin: {total_rows} (dengan style, merge, tinggi baris)")
-    return new_header_row
+def apply_inplace(ws, wsv, rows, step, selected_cols, gram_filter):
+    """Mode update: ubah harga blok terakhir DI TEMPAT, hanya kolom & gramasi
+    yg dipilih. Kolom lain dibiarkan utuh."""
+    changed = []
+    for r in rows:
+        for c in selected_cols:
+            gsrc = ws.cell(r, GRAM_COL[c]).value
+            try:
+                g = float(gsrc)
+            except (TypeError, ValueError):
+                continue
+            if gram_filter is not None and g not in gram_filter:
+                continue
+            v = ws.cell(r, c).value
+            base = v
+            if isinstance(v, str) and v.startswith("="):
+                base = wsv.cell(r, c).value
+            try:
+                base = float(base)
+            except (TypeError, ValueError):
+                continue
+            nv = base + step * g
+            changed.append((r, c, g, base, nv))
+            ws.cell(r, c).value = nv
+    return changed
 
 
 def main():
-    args = parse_args()
-    filepath = os.path.abspath(args.file)
+    ap = argparse.ArgumentParser(description="Skill update blok harga ANTAM (fleksibel).")
+    ap.add_argument("file", help="Path file .xlsx")
+    ap.add_argument("--date", help="Label tanggal baru (wajib utk mode add), mis. '8 AGUSTUS 2026'")
+    ap.add_argument("--step", type=int, default=50, help="Kenaikan per gram (boleh negatif), default 50")
+    ap.add_argument("--targets", default="antam",
+                    help="Kolom yg diubah: antam/retro/random/2025/2026/galeri24/ubs (koma utk banyak)")
+    ap.add_argument("--grams", default=None, help="Hanya gramasi tertentu, mis. '1,2,5'")
+    ap.add_argument("--mode", choices=["add", "update"], default="add",
+                    help="add=tambah blok baru (default), update=ubah blok terakhir di tempat")
+    ap.add_argument("--sheet", default="ANTAM", help="Nama sheet (default ANTAM)")
+    ap.add_argument("--dry-run", action="store_true", help="Cek & tampilkan rencana saja")
+    ap.add_argument("--no-backup", action="store_true", help="Tanpa backup otomatis")
+    args = ap.parse_args()
 
-    if not os.path.exists(filepath):
-        print(f"ERROR: File tidak ditemukan: {filepath}")
-        sys.exit(1)
+    if not os.path.exists(args.file):
+        sys.exit("File tidak ditemukan: %s" % args.file)
+    if args.mode == "add" and not args.date:
+        sys.exit("Mode add butuh --date. Gunakan --mode update utk ubah blok yg ada.")
 
-    print(f"[INFO] File: {filepath}")
-    print(f"[INFO] Tanggal: {args.date}, Step: {args.step:+d}, Dry-run: {args.dry_run}")
+    selected_cols, labels = resolve_columns(args.targets)
+    gram_filter = resolve_grams(args.grams)
+    if not selected_cols:
+        sys.exit("Tidak ada target valid.")
 
-    wb = load_workbook(filepath)
-    if "ANTAM" not in wb.sheetnames:
-        print("ERROR: Sheet 'ANTAM' tidak ditemukan.")
-        sys.exit(1)
-    ws = wb["ANTAM"]
+    if not args.no_backup and not args.dry_run:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base, ext = os.path.splitext(args.file)
+        shutil.copy2(args.file, "%s_BACKUP_%s%s" % (base, ts, ext))
+        print("[backup] dibuat otomatis.")
 
-    header_row, data_start, data_end, metadata_row = find_last_block(ws)
-    print(f"[INFO] Blok terakhir: header={header_row}, metadata={metadata_row}, data={data_start}-{data_end}")
+    wb = load_workbook(args.file, data_only=False)
+    wbv = load_workbook(args.file, data_only=True)
+    if args.sheet not in wb.sheetnames:
+        sys.exit("Sheet '%s' tidak ditemukan. Ada: %s" % (args.sheet, wb.sheetnames))
+    ws = wb[args.sheet]
+    wsv = wbv[args.sheet]
 
-    if args.dry_run:
-        print("\n" + "=" * 60)
-        print("DRY-RUN MODE — Tidak ada yang ditulis ke file")
-        print("=" * 60)
-        copy_block(ws, header_row, data_start, data_end, metadata_row, args.date, args.step, dry_run=True)
-        print("\n[INFO] Jika sesuai, jalankan lagi tanpa --dry-run")
+    headers = find_header_rows(ws)
+    if not headers:
+        sys.exit("Tidak ada blok 'HARGA ANTAM ...' di sheet %s." % args.sheet)
+    src_h = headers[-1]
+    spacing = (headers[-1] - headers[-2]) if len(headers) >= 2 else 12
+    src_last = ws.max_row
+    old_header = str(ws.cell(src_h, 1).value)
+    old_date = old_header.split("-", 1)[-1].strip() if "-" in old_header else ""
+
+    data_start = src_h + 2  # baris pertama data (setelah header + sub-header)
+    data_rows = list(range(data_start, src_last + 1))
+    block_rows = list(range(src_h, src_last + 1))  # seluruh blok termasuk header
+    print("[info] mode=%s | target: %s | kolom: %s" % (args.mode, sorted(labels), selected_cols))
+    print("[info] step %d/gram | gramasi: %s" % (args.step, gram_filter or "semua"))
+    print("[info] blok sumber: %s-%s | header: %s" % (src_h, src_last, old_header))
+
+
+    if args.mode == "add":
+        dst_h = src_h + spacing
+        n_rows = len(block_rows)
+        new_header = HEADER_MARK + " - " + args.date
+        if args.dry_run:
+            print("[dry-run/add] blok baru: %s-%s -> %s" % (dst_h, dst_h + n_rows - 1, new_header))
+            print("[dry-run] selesai (mode add, belum disimpan).")
+            return
+        max_col = 13
+        for r in block_rows:
+            for c in range(1, ws.max_column + 1):
+                if ws.cell(r, c).value is not None:
+                    max_col = max(max_col, c)
+        for m in ws.merged_cells.ranges:
+            if m.max_col > max_col and not (m.max_row < src_h or m.min_row > src_last):
+                max_col = max(max_col, m.max_col)
+        dst_rows = list(range(dst_h, dst_h + n_rows))
+        for di, sr in enumerate(block_rows):
+            dr = dst_rows[di]
+            for c in range(1, max_col + 1):
+                s = ws.cell(sr, c)
+                d = ws.cell(dr, c)
+                d.value = build_new_value(ws, wsv, sr, c, gram_filter, old_header,
+                                          new_header, old_date, args.date, args.step,
+                                          selected_cols)
+                copy_style(s, d)
+        for di, sr in enumerate(block_rows):
+            dr = dst_rows[di]
+            if sr in ws.row_dimensions and ws.row_dimensions[sr].height is not None:
+                ws.row_dimensions[dr].height = ws.row_dimensions[sr].height
+        for m in list(ws.merged_cells.ranges):
+            if not (m.max_row < src_h or m.min_row > src_last):
+                ws.merge_cells(start_row=m.min_row + spacing, start_column=m.min_col,
+                               end_row=m.max_row + spacing, end_column=m.max_col)
+        wb.save(args.file)
+        print("[ok] %s -> blok baru %s-%s (%s)" % (args.file, dst_h, dst_h + n_rows - 1, new_header))
         return
 
-    if not args.no_backup:
-        backup_file(filepath)
 
-    new_header_row = copy_block(ws, header_row, data_start, data_end, metadata_row, args.date, args.step, dry_run=False)
-    wb.save(filepath)
-    print(f"\n[SUCCESS] {filepath} diupdate, blok baru di baris {new_header_row}")
+    # mode update
+    rows = []
+    for r in data_rows:
+        rows.append(r)
+        if isinstance(ws.cell(r, 7).value, str) and ws.cell(r, 7).value.strip() == "MERAH = KOSONG":
+            break
+    if args.dry_run:
+        print("[dry-run/update] baris yg akan diubah (kolom %s):" % selected_cols)
+        for r in rows:
+            for c in selected_cols:
+                g = ws.cell(r, GRAM_COL[c]).value
+                try:
+                    g = float(g)
+                except (TypeError, ValueError):
+                    continue
+                if gram_filter is not None and g not in gram_filter:
+                    continue
+                v = ws.cell(r, c).value
+                base = v
+                if isinstance(v, str) and v.startswith("="):
+                    base = wsv.cell(r, c).value
+                try:
+                    base = float(base)
+                except (TypeError, ValueError):
+                    continue
+                print("  row %d | gram %s | col %d | %s -> %s" % (r, g, c, base, base + args.step * g))
+        print("[dry-run] selesai (mode update, belum disimpan).")
+        return
+    changed = apply_inplace(ws, wsv, rows, args.step, selected_cols, gram_filter)
+    wb.save(args.file)
+    print("[ok] %s -> blok terakhir diupdate: %d sel (target %s)" % (args.file, len(changed), sorted(labels)))
 
 
 if __name__ == "__main__":
