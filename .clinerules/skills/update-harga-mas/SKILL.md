@@ -52,6 +52,21 @@ python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 40 --tar
   UBS Batik (K–L, gram di K). Baris terakhir memuat `MERAH = KOSONG`.
 - `--mode update` tidak menambah blok → **tidak perlu `--date`**, tidak mengubah header/tanggal.
 
+> **⚠️ PELAJARAN (jangan terulang 2x) — Format blok ANTAM WAJIB ikut tersalin.**
+> `openpyxl` TIDAK menyalin style otomatis saat menulis `.value`. Di mode `add`,
+> blok hasil harus **plek ketiplek** dengan blok sumber, jadi WAJIB:
+> 1. Menyalin style sel lewat `copy_style(src, dst)` (font/border/fill/
+>    number_format/alignment) — bukan hanya nilainya.
+> 2. Menduplikasi **merged cells** blok sumber ke blok baru (offset baris).
+> 3. Menyalin **tinggi baris** (`row_dimensions.height`).
+>
+> **Penyebab bug yang pernah terjadi:** ada versi lama script yang hanya menyalin
+> nilai sehingga blok copas kehilangan border + format angka (`General`) + merged
+> cells + tinggi baris (terlihat polos/kosong). Setelah update, VERIFIKASI WAJIB:
+> bandingkan border & merged cells blok baru vs blok sebelumnya — bukan hanya
+> nilainya. Ciri blok yang salah = sel tanpa border, `number_format = General`,
+> tidak ada merged cells.
+
 ---
 
 ## Mode 2 — Update Perhiasan (sheet EMAS): ganti angka & tanggal
@@ -162,6 +177,14 @@ $git = "C:\Program Files\Git\cmd\git.exe"
   padahal tabel menurunkan semua kadar). Jangan menebak — tanyakan.
 - Siapkan JSON langsung dengan label persis tertera di kolom A file (bukan
   penamaan karat "6K" jika di file tertulis "300/6K").
+- **Mode `add` ANTAM = copas FORMAT lengkap, bukan sekadar nilai.** Pastikan
+  script yang benar-benar DIEKSEKUSI memuat `copy_style(src, dst)` + penyalinan
+  merged cells & tinggi baris. Jangan pakai script yang TIDAK memiliki
+  `copy_style` (versi lama) — hasil bloknya kehilangan border/angka/merge.
+- **Sinkronkan script**: skill ini dibundel dengan versi v2 yang sudah benar
+  (`.clinerules/skills/update-harga-mas/scripts/update_harga_antam.py`). Sebelum
+  update, cek bahwa file yang dijalankan adalah versi itu (atau yang sudah
+  diperbaiki), bukan salinan lama di `scripts/`.
 
 ## Aturan keselamatan
 - Selalu mulai dengan `--dry-run`, lalu jalankan tanpa flag itu.

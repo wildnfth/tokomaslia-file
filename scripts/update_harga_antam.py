@@ -13,10 +13,12 @@ import argparse
 import os
 import shutil
 import sys
+from copy import copy
 from datetime import datetime
 
 try:
     from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
 except ImportError:
     print("ERROR: openpyxl tidak terinstal. Jalankan: pip install openpyxl")
     sys.exit(1)
@@ -66,73 +68,101 @@ def find_last_block(ws):
             return r, data_start, data_end, metadata_row
     raise ValueError("Tidak dapat menemukan blok HARGA ANTAM terakhir di sheet.")
 
+def copy_style(src, dst):
+    """Salin style sel (font, fill, border, format angka, alignment, protection)."""
+    dst.font = copy(src.font)
+    dst.fill = copy(src.fill)
+    dst.border = copy(src.border)
+    dst.number_format = src.number_format
+    dst.alignment = copy(src.alignment)
+    dst.protection = copy(src.protection)
+
+
 def copy_block(ws, header_row, data_start, data_end, metadata_row, new_date, step, dry_run=False):
-    """Salin blok terakhir ke bawah, update harga dan tanggal."""
+    """Salin blok terakhir (header + metadata + data) ke bawah BESERTA FORMAT
+    (style sel, merged cells, tinggi baris), update harga & tanggal.
+    Hasilnya plek ketiplek dengan blok sumber."""
     new_header_row = data_end + 2
     new_metadata_row = new_header_row + 1
     new_data_start = new_metadata_row + 1
+    delta = new_header_row - header_row
 
     new_header_a = f"HARGA ANTAM - {new_date}"
     new_header_g = "HARGA Galeri24"
     new_header_k = "HARGA UBS BATIK"
 
     if dry_run:
-        print(f"[DRY-RUN] Akan menambahkan blok baru di baris {new_header_row}")
-    else:
-        ws.cell(row=new_header_row, column=1, value=new_header_a)
-        ws.cell(row=new_header_row, column=7, value=new_header_g)
-        ws.cell(row=new_header_row, column=11, value=new_header_k)
+        print(f"[DRY-RUN] Akan menambahkan blok baru di baris {new_header_row} (COPAS nilai+style+merge+tinggi)")
 
-    for col in range(1, 17):
-        old_val = ws.cell(row=metadata_row, column=col).value
-        if old_val is not None:
+    # 1) Salin tinggi baris header + metadata + data
+    for r in range(header_row, data_end + 1):
+        rd = ws.row_dimensions.get(r)
+        if rd is not None and rd.height:
             if dry_run:
-                print(f"[DRY-RUN] Metadata {new_metadata_row} kol {col}: salin '{old_val}'")
+                print(f"[DRY-RUN] Baris {r + delta}: tinggi baris = {rd.height}")
             else:
-                ws.cell(row=new_metadata_row, column=col, value=old_val)
+                ws.row_dimensions[r + delta].height = rd.height
 
+    # 2) Kumpulkan merged cells pada area blok sumber (untuk diterapkan di blok baru)
+    merges_src = []
+    for mr in ws.merged_cells.ranges:
+        if header_row <= mr.min_row <= data_end:
+            merges_src.append((mr.min_row + delta, mr.min_col, mr.max_row + delta, mr.max_col))
+
+    # 3) Salin SEMUA sel (nilai + style) — col 1..16
+    total_rows = 0
+    for r in range(header_row, data_end + 1):
+        new_r = r + delta
+        for col in range(1, 17):
+            src = ws.cell(r, col)
+            if dry_run:
+                if src.value is not None:
+                    print(f"[DRY-RUN] {new_r} {get_column_letter(col)}: salin '{src.value}'")
+            else:
+                dst = ws.cell(new_r, col)
+                copy_style(src, dst)
+                dst.value = src.value
+        total_rows += 1
+
+    # 4) Update tanggal di header & metadata
     if dry_run:
-        print(f"[DRY-RUN] Metadata G{new_metadata_row}: update tanggal -> '{new_date}'")
-        print(f"[DRY-RUN] Metadata K{new_metadata_row}: update tanggal -> '{new_date}'")
+        print(f"[DRY-RUN] Header A{new_header_row} -> '{new_header_a}'")
+        print(f"[DRY-RUN] Metadata G{new_metadata_row} & K{new_metadata_row}: tanggal -> '{new_date}'")
     else:
-        ws.cell(row=new_metadata_row, column=7, value=new_date)
-        ws.cell(row=new_metadata_row, column=11, value=new_date)
+        ws.cell(new_header_row, 1, new_header_a)
+        ws.cell(new_header_row, 7, new_header_g)
+        ws.cell(new_header_row, 11, new_header_k)
+        ws.cell(new_metadata_row, 7, new_date)
+        ws.cell(new_metadata_row, 11, new_date)
 
-    print(f"[INFO] Menyalin data baris {data_start}-{data_end}, step {step:+d}")
-    rows_copied = 0
+    # 5) Update harga per gram sesuai step (lewati baris MERAH = KOSONG)
+    price_cols = {2: "B", 3: "C", 4: "D", 5: "E", 8: "H", 9: "I", 12: "L"}
     for i, old_row in enumerate(range(data_start, data_end + 1)):
         new_row = new_data_start + i
-        row_data = {col: ws.cell(row=old_row, column=col).value for col in range(1, 17)}
-        is_merah = row_data.get(1) == "MERAH = KOSONG" or row_data.get(7) == "MERAH = KOSONG"
-
-        if is_merah:
-            merah_col = 7 if row_data.get(7) == "MERAH = KOSONG" else 1
+        val_a = ws.cell(old_row, 1).value
+        val_g = ws.cell(old_row, 7).value
+        if val_a == "MERAH = KOSONG" or val_g == "MERAH = KOSONG":
+            merah_col = 7 if val_g == "MERAH = KOSONG" else 1
             if dry_run:
-                print(f"[DRY-RUN] Baris {new_row}: pertahankan MERAH = KOSONG")
-            else:
-                ws.cell(row=new_row, column=merah_col, value="MERAH = KOSONG")
+                print(f"[DRY-RUN] Baris {new_row}: pertahankan MERAH = KOSONG (kol {merah_col})")
             continue
-
-        price_cols = {2: "B", 3: "C", 4: "D", 5: "E", 8: "H", 9: "I", 12: "L"}
         for col, desc in price_cols.items():
-            val = row_data.get(col)
+            val = ws.cell(old_row, col).value
             if isinstance(val, (int, float)) and not isinstance(val, bool):
                 new_val = val + step
                 if dry_run:
                     print(f"[DRY-RUN] {new_row} {desc}: {val:,.0f} -> {new_val:,.0f}")
                 else:
-                    ws.cell(row=new_row, column=col, value=new_val)
+                    ws.cell(new_row, col, new_val)
 
-        for col in [1, 6, 7, 10, 11, 13, 14, 15, 16]:
-            val = row_data.get(col)
-            if val is not None:
-                if dry_run:
-                    print(f"[DRY-RUN] {new_row} kol {col}: salin '{val}'")
-                else:
-                    ws.cell(row=new_row, column=col, value=val)
-        rows_copied += 1
+    # 6) Terapkan merged cells pada blok baru (hindari duplikat)
+    if not dry_run:
+        existing = {(m.min_row, m.min_col, m.max_row, m.max_col) for m in ws.merged_cells.ranges}
+        for (mr, mc, mrr, mrc) in merges_src:
+            if (mr, mc, mrr, mrc) not in existing:
+                ws.merge_cells(start_row=mr, start_column=mc, end_row=mrr, end_column=mrc)
 
-    print(f"[INFO] Total baris disalin: {rows_copied}")
+    print(f"[INFO] Total baris blok disalin: {total_rows} (dengan style, merge, tinggi baris)")
     return new_header_row
 
 
