@@ -75,6 +75,66 @@ def weight_col_of(c):
     return 1 if c == 2 else (4 if c == 5 else None)
 
 
+def apply_thick_borders(ws, start):
+    """Terapkan border THICK pada blok yang diawali baris `start` (baris TANGGAL).
+
+    - FRAME luar  : baris start..start+13, kolom 1-5.
+    - GRUP MEREK  : kiri  (A-B): STAR SILVER 103-107, ANTAM 108-109, LOTUS 110-114
+                    kanan (D-E): MT 103-108, SIMBA 110-111, EURO 113-114
+      (relatif thd start).
+    Catatan penting: writer openpyxl men-collapse border sel merged (non-anchor)
+    ke style ANCHOR saat save. Karena itu border tebal untuk sel yang ada di dalam
+    merged range WAJIB ditebalkan lewat sel ANCHOR-nya agar render tebal di Excel.
+    """
+    from openpyxl.styles import Border as _Border, Side as _Side
+    THICK = _Side(style='thick')
+
+    # peta (baris,kolom) -> anchor utk semua merged range
+    anchor_map = {}
+    for m in ws.merged_cells.ranges:
+        for r in range(m.min_row, m.max_row + 1):
+            for c in range(m.min_col, m.max_col + 1):
+                anchor_map[(r, c)] = (m.min_row, m.min_col)
+
+    def set_thick(r, c, attr):
+        if (r, c) in anchor_map and (r, c) != anchor_map[(r, c)]:
+            r, c = anchor_map[(r, c)]
+        cell = ws.cell(r, c)
+        b = cell.border
+        kw = {'left': b.left, 'right': b.right, 'top': b.top, 'bottom': b.bottom}
+        kw[attr] = THICK
+        cell.border = _Border(**kw)
+
+    def box(r1r, r2r, lidx, ridx):
+        for off in range(r1r, r2r + 1):
+            r = start + off
+            if off == r1r:
+                set_thick(r, lidx, 'top')
+                set_thick(r, ridx, 'top')
+            if off == r2r:
+                set_thick(r, lidx, 'bottom')
+                set_thick(r, ridx, 'bottom')
+            set_thick(r, lidx, 'left')
+            set_thick(r, ridx, 'right')
+
+    # frame luar
+    for c in range(1, 6):
+        set_thick(start, c, 'top')
+        set_thick(start + 13, c, 'bottom')
+    for r in range(start, start + 14):
+        set_thick(r, 1, 'left')
+        set_thick(r, 5, 'right')
+
+    # grup merek
+    box(2, 6, 1, 2)    # STAR SILVER
+    box(7, 8, 1, 2)    # ANTAM
+    box(9, 13, 1, 2)   # LOTUS
+    box(2, 7, 4, 5)    # MT
+    box(9, 10, 4, 5)   # SIMBA
+    box(12, 13, 4, 5)  # EURO
+
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('file')
@@ -185,6 +245,9 @@ def main():
 
     # tanggal baru
     ws.cell(new_start, 1).value = new_header
+
+    # border THICK: frame luar + tiap grup merek (judul+gramasi)
+    apply_thick_borders(ws, new_start)
 
     wb.save(args.file)
     print('[ok] %s -> blok baru %d-%d (%s) | %d harga diubah'

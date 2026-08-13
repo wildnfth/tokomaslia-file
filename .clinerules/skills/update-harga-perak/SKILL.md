@@ -62,6 +62,30 @@ Script menyimpannya sebagai string persis (mis. `71rb/gr` → `69,5rb/gr`;
 `57,5rb/gr` → `56rb/gr`; `-` tetap `-`). Sel harga total `jt` dikurangi
 `step × berat_gr ÷ 1000` (mis. ANTAM 500 gr, step 1.5 → turun 0,75 jt).
 
+## Border THICK pada blok terbaru
+
+Setiap blok baru yang dibuat otomatis diberi **border tebal (`thick`)**:
+
+1. **Frame terluar** seluruh blok (atas + bawah + kiri + kanan, kolom A–E).
+2. **Tiap grup merek** (judul merek + baris gramasinya) dalam satu box tebal:
+   - Kiri (A–B): **STAR SILVER** (103–107), **ANTAM** (108–109), **LOTUS** (110–114).
+   - Kanan (D–E): **MT** (103–108), **SIMBA** (110–111), **EURO** (113–114).
+   - Relatif terhadap baris `TANGGAL` (blok data = baris start..start+13).
+3. **Bukan tiap baris** — garis pemisah antar baris gramasi di dalam satu grup
+   tetap tipis (tidak ikut tebal).
+
+> **⚠️ Trick merged cells (penting):** writer openpyxl men-collapse border sel
+> `merged` (non-anchor) ke style **anchor** saat save. Karena itu border tebal
+> untuk sel yang berada di dalam merged range (mis. judul merek `A103:B103`,
+> header `A101:E101`) WAJIB ditebalkan lewat sel **ANCHOR**-nya. Fungsi ini sudah
+> ditangani `apply_thick_borders(ws, start)` di dalam script.
+
+Untuk menerapkan ulang border tebal pada blok yang sudah ada tanpa menambah blok,
+jalankan script aplikator (retrofit):
+```powershell
+python scripts/apply_thick_perak.py "TEMPLATE HARGA PERAK.xlsx"
+```
+
 ## Alur kerja yang disarankan
 
 1. Konfirmasi ke pengguna: **tanggal baru** + arah/nominal penyesuaian (naik/turun, rb/gr).
