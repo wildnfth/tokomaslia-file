@@ -129,7 +129,7 @@ def main():
         print(f"{iso}: {len(recs)} baris")
     conn.commit()
     conn.close()
-    print("Selesai →", DB_PATH)
+    print("Selesai ->", DB_PATH)
 
 
 if __name__ == "__main__":
