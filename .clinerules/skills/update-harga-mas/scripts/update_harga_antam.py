@@ -104,6 +104,7 @@ def resolve_grams(grams_spec):
             print("[warn] gramasi tidak valid, dilewati:", g)
     return out or None
 
+
 def build_new_value(ws, wsv, sr, c, gram_filter, old_header, new_header,
                     old_date, new_date, step, selected_cols):
     """Hitung nilai sel tujuan utk mode add.
@@ -296,4 +297,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

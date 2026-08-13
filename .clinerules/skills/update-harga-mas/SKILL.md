@@ -206,7 +206,7 @@ Sistem Git + Git LFS sudah terpasang dan dikonfigurasi untuk melacat semua file 
 
 ### Repository Status
 - **GitHub**: https://github.com/liagoldeditor/tokomaslia-file
-- **Lokasi lokal**: D:\TOKO MAS LIA\DOKUMEN\
+- **Lokasi lokal**: D:\\TOKO MAS LIA\\DOKUMEN\\
 - **Branch**: main
 - **File**: Semua file .docx, .xlsx, .pptx dilacat dengan Git LFS
 
@@ -269,3 +269,5 @@ Pilih menu 2 untuk riwayat, menu 3 untuk restore
 - File `*_BACKUP_*.xlsx` juga ikut dilacat Git secara otomatis
 - Setiap ekseskusi skill ini, perubahan akan tersedia di riwayat GitHub
 - Tidak perlu lagi khawatir kehilangan versi lama dokumen
+
+
