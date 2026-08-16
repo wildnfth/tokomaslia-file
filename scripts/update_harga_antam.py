@@ -104,6 +104,7 @@ def resolve_grams(grams_spec):
             print("[warn] gramasi tidak valid, dilewati:", g)
     return out or None
 
+
 def build_new_value(ws, wsv, sr, c, gram_filter, old_header, new_header,
                     old_date, new_date, step, selected_cols):
     """Hitung nilai sel tujuan utk mode add.
@@ -223,7 +224,12 @@ def main():
 
 
     if args.mode == "add":
-        dst_h = src_h + spacing
+        # Format baru (16 AGUSTUS 2026): blok bisa lebih TINGGI daripada jarak
+        # antar header (UBS memanjang ke bawah melewati baris 'MERAH = KOSONG'
+        # dengan baris gramasi 50 & 100). Maka posisi header blok baru = 1 baris
+        # kosong di bawah baris TERAKHIR blok sumber, BUKAN dari selisih header.
+        dst_h = src_last + 2   # (dst_h-1 = baris kosong, dst_h = header baru)
+        spacing = dst_h - src_h
         n_rows = len(block_rows)
         new_header = HEADER_MARK + " - " + args.date
         if args.dry_run:
@@ -262,11 +268,11 @@ def main():
 
 
     # mode update
-    rows = []
-    for r in data_rows:
-        rows.append(r)
-        if isinstance(ws.cell(r, 7).value, str) and ws.cell(r, 7).value.strip() == "MERAH = KOSONG":
-            break
+    # Format baru (16 AGUSTUS 2026): blok terakhir boleh punya baris UBS di
+    # BAWAH penanda 'MERAH = KOSONG' (gramasi 50 & 100). Jangan berhenti di
+    # penanda MERAH; proses seluruh baris data blok terakhir. Baris yang tidak
+    # punya nilai pada target (gram/kolom None atau teks) otomatis dilewati.
+    rows = list(data_rows)
     if args.dry_run:
         print("[dry-run/update] baris yg akan diubah (kolom %s):" % selected_cols)
         for r in rows:
@@ -296,4 +302,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

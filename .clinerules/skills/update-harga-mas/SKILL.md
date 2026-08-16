@@ -49,8 +49,29 @@ python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 40 --tar
 - `--date` : label tanggal baru (WAJIB utk mode `add`; utk `update` abaikan).
 - `--step`: kenaikan per gram (boleh negatif untuk turun; default 50).
 - Struktur blok: HARGA ANTAM (A–E, gram di A), Galeri24 (G–H, gram di G),
-  UBS Batik (K–L, gram di K). Baris terakhir memuat `MERAH = KOSONG`.
+  UBS Batik (K–L, gram di K). Baris dengan `MERAH = KOSONG` (kolom G) adalah
+  penanda akhir bagian ANTAM/Galeri24.
 - `--mode update` tidak menambah blok → **tidak perlu `--date`**, tidak mengubah header/tanggal.
+
+> **⚠️ FORMAT BARU (sejak blok 16 AGUSTUS 2026) — UBS memanjang melewati `MERAH = KOSONG`.**
+> Blok yang sekarang (16 AGUSTUS 2026) lebih tinggi 12 baris daripada blok-blok
+> lama:
+> - **UBS (kolom K–L)** kini punya gramasi `0.5, 1, 2, 3, 4, 5, 10, 25, 50, 100`
+>   — ada baris **"4 gram"** (yang TIDAK dimiliki ANTAM/Galeri24), dan dua baris
+>   bawahnya (**50 & 100 gram**) berada di **BAWAH** baris `MERAH = KOSONG`.
+> - **ANTAM & Galeri24** tetap `0.5, 1, 2, 3, 5, 10, 25, 50, 100` (tanpa "4 g").
+> Akibatnya jangan berasumsi "baris terakhir blok = baris `MERAH = KOSONG`".
+> Script sudah disesuaikan agar:
+>   1. **`add`** menempatkan header blok baru di **`baris_terakhir_blok_sumber + 2`**
+>      (1 baris kosong pemisah), bukan dari selisih antar-header yang bisa lebih
+>      kecil dari tinggi blok.
+>   2. **`update`** memproses **seluruh baris data blok terakhir** (termasuk UBS
+>      50/100 g di bawah `MERAH = KOSONG`), baris tanpa nilai target otomatis
+>      dilewati.
+> Verifikasi wajib setelah `add`: bandingkan **merged cells** blok baru vs blok
+> sumber (offset baris harus sama untuk semua, termasuk `L:M` baris UBS 50/100)
+> dan borders/number_format — ciri blok salah = sel tanpa border / `General` /
+> merged cells hilang.
 
 > **⚠️ PELAJARAN (jangan terulang 2x) — Format blok ANTAM WAJIB ikut tersalin.**
 > `openpyxl` TIDAK menyalin style otomatis saat menulis `.value`. Di mode `add`,
