@@ -17,6 +17,24 @@ Penting: **jangan keliru target**.
 - ANTAM = LM, langganan hariannya di Tambah Blok Baru.
 - EMAS = perhiasan, TIDAK menambah blok (hanya perbarui angka & tanggal yang ada).
 
+> **⚠️ PELAJARAN (15 AGUSTUS 2026) — "LM" = SEMUA MERK, bukan cuma ANTAM.**
+> Saat user bilang "harga LM naik X/g" atau "naikin harga logam mulia", yang
+> dimaksud adalah **semua merk logam mulia**: ANTAM (RETRO/RANDOM/2025/2026) +
+> **Galeri24** + **UBS Batik**. TARGET ANTAM SAJA SALAH.
+> - `--targets antam` (default) HANYA kolom B/C/D/E — Galeri24 & UBS tertinggal.
+> - Karena mode `add` menyalin nilai Galeri24/UBS apa adanya dari blok sumber,
+>   setelah blok baru dibuat WAJIB ikut menaikkan Galeri24 & UBS di blok itu:
+>   `--mode update --targets "galeri24,ubs" --step <X>`.
+> - Urutan eksekusi "LM naik X/g" yang benar:
+>   1. `update_harga_antam.py <file> --date "<TANGGAL>" --step X` (blok ANTAM)
+>   2. `update_harga_antam.py <file> --mode update --step X --targets "galeri24,ubs"` (Galeri24 + UBS di blok baru)
+
+> **⚠️ PELAJARAN (15 AGUSTUS 2026) — harga WAJIB kelipatan 5.**
+> Setelah menaikkan harga, selisih `step * gram` bisa menghasilkan angka tak bulat
+> kelipatan 5 (mis. base 1297 + 5 = 1302, base 1382 + 5 = 1387). PELANGGAN TIDAK
+> SUKA harga bukan kelipatan 5. Selalu **bulatkan ke kelipatan 5 terdekat**
+> (`round(v/5)*5`) pada semua sel harga blok baru setelah update.
+
 ---
 
 ## Mode 1 — Update LM (sheet ANTAM)
@@ -39,6 +57,10 @@ Contoh (langkah pertama selalu `--dry-run`):
 ```powershell
 # tambah blok baru, semua harga naik 50/gr (perilaku lama)
 python scripts/update_harga_antam.py "<file.xlsx>" --date "8 AGUSTUS 2026" --step 50
+# "LM naik X/gr" = ANTAM + Galeri24 + UBS (WAJIB dua langkah):
+python scripts/update_harga_antam.py "<file.xlsx>" --date "15 AGUSTUS 2026" --step 10
+python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 10 --targets "galeri24,ubs"
+# lalu bulatkan semua harga blok baru ke kelipatan 5 terdekat
 # tambah blok, HANYA UBS naik 30/gr (ANTAM & Galeri24 tetap)
 python scripts/update_harga_antam.py "<file.xlsx>" --date "8 AGUSTUS 2026" --step 30 --targets ubs
 # ubah blok terakhir DI TEMPAT: Galeri24 naik 25/gr, tanpa blok baru
@@ -212,6 +234,10 @@ $git = "C:\Program Files\Git\cmd\git.exe"
 - Backup otomatis DIHIDUPKAN (jangan `--no-backup` tanpa alasan).
 - Konfirmasi tanggal & nominal ke pengguna bila tidak jelas.
 - Jangan ubah format (font/size/warna/background/merge) selain nilai yang diminta.
+- **SETELAH selesai edit, BUKA filenya di Excel laptop pengguna**
+  (`Start-Process "<path.xlsx>"`) supaya user langsung bisa cek hasilnya.
+- **Harga wajib kelipatan 5.** Setelah update harga apa pun, periksa semua sel
+  harga; yang bukan kelipatan 5 dibulatkan ke kelipatan 5 terdekat.
 
 ---
 
