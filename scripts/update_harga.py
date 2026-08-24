@@ -29,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
 
 from openpyxl import load_workbook
@@ -296,6 +297,34 @@ def open_excel(path):
         print("[warn] gagal buka Excel:", e)
 
 
+def send_discord_snapshot(xlsx_path, sheet, caption, channel):
+    """Render sheet jadi PNG lalu kirim ke channel Discord (webhook)."""
+    tmp = os.path.join(tempfile.gettempdir(), "harga_snap_%s.png" % datetime.now().strftime("%H%M%S"))
+    try:
+        from screenshot_harga import render
+    except ImportError:
+        base = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, base)
+        from screenshot_harga import render
+    try:
+        render(xlsx_path, sheet, None, tmp)
+    except Exception as e:
+        print("[warn] gagal screenshot:", e)
+        return
+    try:
+        subprocess.run(
+            [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "send_discord.py"),
+             tmp, "--channel", channel, "--caption", caption],
+            check=True)
+    except subprocess.CalledProcessError as e:
+        print("[warn] gagal kirim Discord:", e)
+    finally:
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
+
+
 def main():
     ap = argparse.ArgumentParser(description="Update harga mas (ANTAM + Galeri24 + UBS + EMAS).")
     ap.add_argument("file")
@@ -310,6 +339,8 @@ def main():
     ap.add_argument("--no-backup", action="store_true")
     ap.add_argument("--no-open", action="store_true")
     ap.add_argument("--no-git", action="store_true")
+    ap.add_argument("--send-discord", action="store_true", help="Kirim foto tabel ke channel Discord setelah update.")
+    ap.add_argument("--discord-channel", default=None, help="Nama channel di discord_config.json. Default: harga-lm-emas (LM) / harga-perhiasan (EMAS).")
     args = ap.parse_args()
 
     if not os.path.exists(args.file):
@@ -346,6 +377,17 @@ def main():
             do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run)
 
     if not args.dry_run:
+        # Screenshot dulu, sebelum Excel user dibuka (file lock bikin PNG kosong).
+        if args.send_discord:
+            sheet = "EMAS" if args.mode == "json" else args.sheet
+            if args.discord_channel:
+                channel = args.discord_channel
+            elif sheet == "EMAS":
+                channel = "harga-perhiasan"
+            else:
+                channel = "harga-lm-emas"
+            caption = "Update harga %s - %s" % (sheet, args.date or "EMAS")
+            send_discord_snapshot(args.file, sheet, caption, channel)
         if not args.no_open:
             open_excel(args.file)
         if not args.no_git:

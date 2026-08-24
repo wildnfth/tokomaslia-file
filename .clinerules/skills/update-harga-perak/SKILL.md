@@ -1,6 +1,6 @@
 ---
 name: update-harga-perak
-description: "Update harga logam mulia perak di file TEMPLATE HARGA PERAK.xlsx (sheet Sheet1) dengan menambah blok harian baru yang menyalin blok terakhir secara plek ketiplek (style, merged cells, tinggi baris), mengganti tanggal, dan menyesuaikan harga (umumnya turun/naik sekian rb/gr). Gunakan saat user minta update harga perak, harga logam mulia perak, LM perak, atau menambah blok harga perak."
+description: "Use when updating Toko Mas Lia silver / LM perak prices in TEMPLATE HARGA PERAK.xlsx (sheet Sheet1): add a new daily block, raise or lower rb/gr, or copy the last perak block. Triggers: update harga perak, LM perak, logam mulia perak, tambah blok perak."
 ---
 
 # Update Harga Perak (LM Perak)
@@ -9,7 +9,8 @@ Skill ini mengelola `TEMPLATE HARGA PERAK.xlsx` (sheet **Sheet1**) — harga log
 mulia perak berbagai merek. Berbeda dengan harga emas, file perak **tidak** punya
 sheet ANTAM/EMAS; strukturnya satu kolom blok per tanggal dengan merek kiri & kanan.
 
-Script: `scripts/update_harga_perak.py`
+Script: `D:\TOKO MAS LIA\DOKUMEN\scripts\update_harga_perak.py`
+(jangan jalankan salinan di folder skill — bisa versi lama).
 
 ## Struktur file `TEMPLATE HARGA PERAK.xlsx`
 
@@ -93,8 +94,11 @@ python scripts/apply_thick_perak.py "TEMPLATE HARGA PERAK.xlsx"
 3. Jalankan tanpa `--dry-run` → backup otomatis dibuat (`*_BACKUP_*.xlsx`).
 4. **Verifikasi wajib**: buka/cek blok baru — nilai benar, merged cells tersalin,
    tinggi baris & style sama dengan blok sumber (bukan hanya nilainya).
-5. Sinkronkan database: `python sync_perak_excel_to_db.py` (tutup Excel dulu).
-6. Bersihkan temp + git commit & push (lihat di bawah).
+5. **Kirim Discord** (REQUIRED SUB-SKILL: `kirim-harga-discord`):
+   `python scripts/kirim_harga_discord.py --channel harga-lm-perak`
+   Jangan kirim saat `--dry-run`. Jangan tulis screenshot sendiri.
+6. Sinkronkan database: `python sync_perak_excel_to_db.py` (tutup Excel dulu).
+7. Bersihkan temp + git commit & push (lihat di bawah).
 
 > **⚠️ Pelajaran format (jangan terulang):** openpyxl TIDAK menyalin style
 > otomatis saat mengisi `.value`. Blok hasil harus **plek ketiplek** — script ini

@@ -22,8 +22,12 @@ CONTOH:
 """
 import argparse
 import copy
+import os
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
 from datetime import datetime
 
 from openpyxl import load_workbook
@@ -144,6 +148,10 @@ def main():
                     help='penurunan harga per gram (rb/gr, positif = turun)')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--no-backup', action='store_true')
+    ap.add_argument('--send-discord', action='store_true',
+                    help='Kirim foto tabel ke channel Discord setelah update.')
+    ap.add_argument('--discord-channel', default='harga-lm-perak',
+                    help='Nama channel di discord_config.json.')
     args = ap.parse_args()
 
     wb = load_workbook(args.file)
@@ -252,6 +260,34 @@ def main():
     wb.save(args.file)
     print('[ok] %s -> blok baru %d-%d (%s) | %d harga diubah'
           % (args.file, new_block[0], new_block[-1], new_header, len(changes)))
+
+    if args.send_discord:
+        _send_discord(args.file, new_header, args.discord_channel)
+
+
+def _send_discord(xlsx_path, caption, channel):
+    """Render sheet aktif jadi PNG lalu kirim ke channel Discord (webhook)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    tmp = os.path.join(tempfile.gettempdir(), "perak_snap_%s.png" % datetime.now().strftime("%H%M%S"))
+    try:
+        sys.path.insert(0, here)
+        from screenshot_harga import render
+        render(xlsx_path, "Sheet1", None, tmp)
+    except Exception as e:
+        print("[warn] gagal screenshot:", e)
+        return
+    try:
+        subprocess.run(
+            [sys.executable, os.path.join(here, "send_discord.py"),
+             tmp, "--channel", channel, "--caption", caption],
+            check=True)
+    except subprocess.CalledProcessError as e:
+        print("[warn] gagal kirim Discord:", e)
+    finally:
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':

@@ -8,6 +8,11 @@
 *.bak
 *.tmp
 Thumbs.db
+__pycache__/
+*.pyc
 
 # File sensitif & data internal (komentari/hapus jika ingin ikut di-upload)
 # harga_perhiasan.db
+
+# Webhook Discord (berisi URL rahasia, jangan di-commit)
+discord_config.json

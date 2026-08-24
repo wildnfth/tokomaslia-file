@@ -1,12 +1,15 @@
 ---
 name: update-harga-mas
-description: "Update harga emas di file TEMPLATE HARGA MAS2, mencakup harga LM (sheet ANTAM, tambah blok harian baru) dan harga perhiasan (sheet EMAS, ganti angka dan tanggal pada blok yang sudah ada). Gunakan saat user minta update harga, naikkan harga, tambah blok harga, atau ganti angka harga."
+description: "Use when updating Toko Mas Lia gold prices in TEMPLATE HARGA MAS2.xlsx — LM/logam mulia on sheet ANTAM (new daily block) or jewelry/perhiasan on sheet EMAS (replace numbers and date). Triggers: update harga, naikkan harga, tambah blok, ganti angka emas, LM naik/turun per gram."
 ---
 
 # Update Harga Mas (LM & Perhiasan)
 
 Skill ini mengelola `TEMPLATE HARGA MAS2.xlsx` (sheet **ANTAM** = logam mulia/LM,
-sheet **EMAS** = perhiasan). Ada DUA jenis update yang berbeda:
+sheet **EMAS** = perhiasan). Ada DUA jenis update yang berbeda.
+
+**Jalan script HANYA dari** `D:\TOKO MAS LIA\DOKUMEN\scripts\` — jangan pakai
+salinan di folder skill (bisa versi lama).
 
 | Jenis | Sheet | Sifat | Script |
 |-------|-------|-------|--------|
@@ -37,12 +40,9 @@ Penting: **jangan keliru target**.
 > dimaksud adalah **semua merk logam mulia**: ANTAM (RETRO/RANDOM/2025/2026) +
 > **Galeri24** + **UBS Batik**. TARGET ANTAM SAJA SALAH.
 > - `--targets antam` (default) HANYA kolom B/C/D/E — Galeri24 & UBS tertinggal.
-> - Karena mode `add` menyalin nilai Galeri24/UBS apa adanya dari blok sumber,
->   setelah blok baru dibuat WAJIB ikut menaikkan Galeri24 & UBS di blok itu:
->   `--mode update --targets "galeri24,ubs" --step <X>`.
-> - Urutan eksekusi "LM naik X/g" yang benar:
->   1. `update_harga_antam.py <file> --date "<TANGGAL>" --step X` (blok ANTAM)
->   2. `update_harga_antam.py <file> --mode update --step X --targets "galeri24,ubs"` (Galeri24 + UBS di blok baru)
+> - JANGAN pakai `update_harga_antam.py` (script lama). Satu perintah dari
+>   `D:\TOKO MAS LIA\DOKUMEN`:
+>   `python scripts/update_harga.py "<file>" --date "<TANGGAL>" --step X --targets allam`
 
 > **⚠️ PELAJARAN (15 AGUSTUS 2026) — harga WAJIB kelipatan 5.**
 > Setelah menaikkan harga, selisih `step * gram` bisa menghasilkan angka tak bulat
@@ -126,6 +126,20 @@ python scripts/update_harga.py "<file.xlsx>" --mode update --step 40 --targets 2
 > bandingkan border & merged cells blok baru vs blok sebelumnya — bukan hanya
 > nilainya. Ciri blok yang salah = sel tanpa border, `number_format = General`,
 > tidak ada merged cells.
+
+## Setelah update berhasil — kirim Discord
+
+**REQUIRED SUB-SKILL:** `kirim-harga-discord`
+
+Jangan tulis screenshot/webhook sendiri. Setelah nilai + format terverifikasi:
+
+```powershell
+cd "D:\TOKO MAS LIA\DOKUMEN"
+python scripts/kirim_harga_discord.py --channel harga-lm-emas      # setelah update LM
+python scripts/kirim_harga_discord.py --channel harga-perhiasan    # setelah update EMAS
+```
+
+Jangan kirim saat `--dry-run`. Jangan buka Excel sebelum kirim.
 
 ---
 
@@ -241,10 +255,8 @@ $git = "C:\Program Files\Git\cmd\git.exe"
   script yang benar-benar DIEKSEKUSI memuat `copy_style(src, dst)` + penyalinan
   merged cells & tinggi baris. Jangan pakai script yang TIDAK memiliki
   `copy_style` (versi lama) — hasil bloknya kehilangan border/angka/merge.
-- **Sinkronkan script**: skill ini dibundel dengan versi v2 yang sudah benar
-  (`.clinerules/skills/update-harga-mas/scripts/update_harga_antam.py`). Sebelum
-  update, cek bahwa file yang dijalankan adalah versi itu (atau yang sudah
-  diperbaiki), bukan salinan lama di `scripts/`.
+- **Script yang dijalankan WAJIB** `D:\TOKO MAS LIA\DOKUMEN\scripts\update_harga.py`.
+  Jangan `update_harga_antam.py` dan jangan salinan di folder skill/`.clinerules`.
 
 ## Aturan keselamatan
 - Selalu mulai dengan `--dry-run`, lalu jalankan tanpa flag itu.
@@ -255,6 +267,8 @@ $git = "C:\Program Files\Git\cmd\git.exe"
   (`Start-Process "<path.xlsx>"`) supaya user langsung bisa cek hasilnya.
 - **Harga wajib kelipatan 5.** Setelah update harga apa pun, periksa semua sel
   harga; yang bukan kelipatan 5 dibulatkan ke kelipatan 5 terdekat.
+- **Setelah verifikasi, kirim Discord** lewat `kirim_harga_discord.py` (lihat
+  skill `kirim-harga-discord`). Jangan `CopyPicture`/`Chart.Paste` manual.
 
 ---
 

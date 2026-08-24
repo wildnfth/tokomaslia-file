@@ -1,0 +1,11 @@
+{
+  "harga-lm-emas": {
+    "webhook_url": "ISI_WEBHOOK_LM_EMAS"
+  },
+  "harga-lm-perak": {
+    "webhook_url": "ISI_WEBHOOK_LM_PERAK"
+  },
+  "harga-perhiasan": {
+    "webhook_url": "ISI_WEBHOOK_PERHIASAN"
+  }
+}
