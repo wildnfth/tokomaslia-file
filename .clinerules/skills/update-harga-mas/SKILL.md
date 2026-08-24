@@ -10,12 +10,27 @@ sheet **EMAS** = perhiasan). Ada DUA jenis update yang berbeda:
 
 | Jenis | Sheet | Sifat | Script |
 |-------|-------|-------|--------|
-| LM (logam mulia) | ANTAM | TAMBAH blok harian baru | `scripts/update_harga_antam.py` |
-| Perhiasan | EMAS | GANTI angka+tanggal di blok yang ada | `scripts/update_harga_emas.py` |
+| LM (logam mulia) | ANTAM | TAMBAH blok harian baru | `scripts/update_harga.py` |
+| Perhiasan | EMAS | GANTI angka+tanggal di blok yang ada | `scripts/update_harga.py` |
+
+> **⚠️ SCRIPT BARU (24 AGUSTUS 2026) — `update_harga.py` menggantikan 2 script lama.**
+> Satu script menangani SEMUA: ANTAM `add`, `update` (merk/gramasi tunggal),
+> dan perhiasan EMAS (`--json`). Otomatis: backup, buka Excel, bulatkan kelipatan 5,
+> commit & push git. PELAJARAN sebelumnya tentang "LM = semua merk", harga kelipatan
+> 5, dan format blok tetap berlaku (lihat catatan di bawah).
 
 Penting: **jangan keliru target**.
 - ANTAM = LM, langganan hariannya di Tambah Blok Baru.
 - EMAS = perhiasan, TIDAK menambah blok (hanya perbarui angka & tanggal yang ada).
+
+> **⚠️ FORMAT BLOK ANTAM BARU (sejak 24 AGUSTUS 2026) — header 2 baris.**
+> Blok ANTAM sekarang punya header DUA baris (berbeda dari blok lama 1 baris):
+>   - Baris judul : `HARGA ANTAM` (kolom A), `HARGA Galeri24` (G), `HARGA UBS BATIK` (K)
+>   - Baris tanggal: `25 AGUSTUS 2026` di kolom A, G, K
+>   - Baris label: `RETRO / RANDOM / 2025 / 2026` (A–E) + Galeri24 gr1 + UBS gr0.5
+>   - Baris berikutnya: harga ANTAM mulai (gram di kolom A), Galeri24 & UBS lanjut.
+> Script `update_harga.py --mode add` MENYALIN UTUH blok terakhir (nilai + style +
+> merged cells + tinggi baris) lalu ganti tanggal, sehingga hasil PLEK KETIPLEK.
 
 > **⚠️ PELAJARAN (15 AGUSTUS 2026) — "LM" = SEMUA MERK, bukan cuma ANTAM.**
 > Saat user bilang "harga LM naik X/g" atau "naikin harga logam mulia", yang
@@ -39,14 +54,16 @@ Penting: **jangan keliru target**.
 
 ## Mode 1 — Update LM (sheet ANTAM)
 
-Script `update_harga_antam.py` punya **dua mode** (`--mode`):
+Script `update_harga.py` punya **tiga mode** (`--mode`):
 
 | Mode | Fungsi |
 |------|--------|
-| `add` (default) | TAMBAH blok harian baru: menyalin blok terakhir ke bawah (pola 1 baris kosong), menyesuaikan harga, mengganti tanggal, format plek ketiplek. |
+| `add` (default) | TAMBAH blok harian baru: menyalin utuh blok terakhir (nilai+style+merge+tinggi baris), ganti tanggal, terapkan step. |
 | `update` | MENGUBAH harga blok TERAKHIR yang SUDAH ADA (di tempat, tanpa blok baru) — untuk menyesuaikan kolom tertentu tanpa blok harian. |
+| `json` | Update sheet EMAS (perhiasan) dari file JSON. Otomatis ke sheet EMAS. |
 
 **Target selektif (`--targets`)** — kolom mana yang dinaikkan; selain target TIDAK diubah:
+- `allam` / `all` / `semua` = SEMUA merk: ANTAM (RETRO/RANDOM/2025/2026) + Galeri24 + UBS
 - `antam` (default) = semua kolom ANTAM (RETRO/RANDOM/2025/2026)
 - `retro`, `random`, `2025`, `2026`, `galeri24`, `ubs`
 - Bisa gabung koma: `--targets "2025,ubs"`
@@ -55,25 +72,25 @@ Script `update_harga_antam.py` punya **dua mode** (`--mode`):
 
 Contoh (langkah pertama selalu `--dry-run`):
 ```powershell
-# tambah blok baru, semua harga naik 50/gr (perilaku lama)
-python scripts/update_harga_antam.py "<file.xlsx>" --date "8 AGUSTUS 2026" --step 50
-# "LM naik X/gr" = ANTAM + Galeri24 + UBS (WAJIB dua langkah):
-python scripts/update_harga_antam.py "<file.xlsx>" --date "15 AGUSTUS 2026" --step 10
-python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 10 --targets "galeri24,ubs"
-# lalu bulatkan semua harga blok baru ke kelipatan 5 terdekat
-# tambah blok, HANYA UBS naik 30/gr (ANTAM & Galeri24 tetap)
-python scripts/update_harga_antam.py "<file.xlsx>" --date "8 AGUSTUS 2026" --step 30 --targets ubs
-# ubah blok terakhir DI TEMPAT: Galeri24 naik 25/gr, tanpa blok baru
-python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 25 --targets galeri24
-# ubah blok terakhir: hanya ANTAM 2025 gramasi 1 & 2 naik 40/gr
-python scripts/update_harga_antam.py "<file.xlsx>" --mode update --step 40 --targets 2025 --grams "1,2"
+# "LM naik X/gr SEMUA merk" — SATU perintah (ANTAM + Galeri24 + UBS):
+python scripts/update_harga.py "<file.xlsx>" --date "25 AGUSTUS 2026" --step 10 --targets allam
+# ANTAM saja naik 50/gr:
+python scripts/update_harga.py "<file.xlsx>" --date "25 AGUSTUS 2026" --step 50
+# ubah blok terakhir DI TEMPAT: cuma UBS naik 30/gr:
+python scripts/update_harga.py "<file.xlsx>" --mode update --step 30 --targets ubs
+# cuma Galeri24 naik 25/gr:
+python scripts/update_harga.py "<file.xlsx>" --mode update --step 25 --targets galeri24
+# ANTAM 2025 gramasi 1 & 2 naik 40/gr:
+python scripts/update_harga.py "<file.xlsx>" --mode update --step 40 --targets 2025 --grams "1,2"
 ```
-- `--date` : label tanggal baru (WAJIB utk mode `add`; utk `update` abaikan).
+- `--date` : label tanggal baru (WAJIB utk mode `add`; utk `update`/`json` abaikan).
 - `--step`: kenaikan per gram (boleh negatif untuk turun; default 50).
 - Struktur blok: HARGA ANTAM (A–E, gram di A), Galeri24 (G–H, gram di G),
   UBS Batik (K–L, gram di K). Baris dengan `MERAH = KOSONG` (kolom G) adalah
   penanda akhir bagian ANTAM/Galeri24.
 - `--mode update` tidak menambah blok → **tidak perlu `--date`**, tidak mengubah header/tanggal.
+- **Otomatis** setelah sukses (kecuali `--no-open` / `--no-git` / `--dry-run`):
+  backup, buka file di Excel, commit & push ke git.
 
 > **⚠️ FORMAT BARU (sejak blok 16 AGUSTUS 2026) — UBS memanjang melewati `MERAH = KOSONG`.**
 > Blok yang sekarang (16 AGUSTUS 2026) lebih tinggi 12 baris daripada blok-blok
@@ -158,8 +175,8 @@ Langkah:
 
 3. Jalankan:
 ```powershell
-python scripts/update_harga_emas.py "<file.xlsx>" --json "perhiasan_baru.json"
-python scripts/update_harga_emas.py "<file.xlsx>" --json "perhiasan_baru.json" --dry-run
+python scripts/update_harga.py "<file.xlsx>" --json "perhiasan_baru.json"
+python scripts/update_harga.py "<file.xlsx>" --json "perhiasan_baru.json" --dry-run
 ```
    - Tanggal ditulis di A1 & E1; **POT tidak diubah** (tidak ada di daftar).
 
