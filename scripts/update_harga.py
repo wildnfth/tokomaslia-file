@@ -98,6 +98,24 @@ def snap5(v):
     return int(round(v / 5.0) * 5)
 
 
+def last_data_row(ws, start):
+    """Baris terakhir yang masih berisi nilai di kolom A-M, dari header blok."""
+    last = start
+    for r in range(start, ws.max_row + 1):
+        if any(ws.cell(r, c).value not in (None, "") for c in range(1, 14)):
+            last = r
+    return last
+
+
+def unmerge_overlap(ws, start, end):
+    doomed = []
+    for m in list(ws.merged_cells.ranges):
+        if not (m.max_row < start or m.min_row > end):
+            doomed.append(str(m))
+    for addr in doomed:
+        ws.unmerge_cells(addr)
+
+
 def apply_inplace(ws, wsv, rows, step, selected_cols, gram_filter):
     changed = []
     for r in rows:
@@ -147,13 +165,14 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
     if not headers:
         sys.exit("Tidak ada blok 'HARGA ANTAM'.")
     src_h = headers[-1]
-    block_rows = list(range(src_h, ws.max_row + 1))
-    dst_h = ws.max_row + 2
+    src_end = last_data_row(ws, src_h)
+    block_rows = list(range(src_h, src_end + 1))
+    dst_h = src_end + 2
     spacing = dst_h - src_h
     n_rows = len(block_rows)
     date_row = src_h + 1
     print("[info] step %d/gram | target %s" % (step, sorted(selected_cols)))
-    print("[info] blok sumber: %s-%s | tanggal lama: %s" % (src_h, ws.max_row, ws.cell(date_row, 1).value))
+    print("[info] blok sumber: %s-%s | tanggal lama: %s" % (src_h, src_end, ws.cell(date_row, 1).value))
     if dry_run:
         print("[dry-run/add] blok baru: %s-%s -> header '%s' / tanggal '%s'" % (
             dst_h, dst_h + n_rows - 1, HEADER_MARK, new_date))
@@ -176,7 +195,11 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
         print("[dry-run] selesai (belum disimpan).")
         return
 
-    dst_rows = list(range(dst_h, dst_h + n_rows))
+    dst_end = dst_h + n_rows - 1
+    src_merges = [m for m in list(ws.merged_cells.ranges)
+                  if not (m.max_row < src_h or m.min_row > src_end)]
+    unmerge_overlap(ws, src_end + 1, dst_end)
+    dst_rows = list(range(dst_h, dst_end + 1))
     for di, sr in enumerate(block_rows):
         dr = dst_rows[di]
         for c in range(1, ws.max_column + 1):
@@ -188,10 +211,9 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
         dr = dst_rows[di]
         if sr in ws.row_dimensions and ws.row_dimensions[sr].height is not None:
             ws.row_dimensions[dr].height = ws.row_dimensions[sr].height
-    for m in list(ws.merged_cells.ranges):
-        if not (m.max_row < src_h or m.min_row > ws.max_row):
-            ws.merge_cells(start_row=m.min_row + spacing, start_column=m.min_col,
-                           end_row=m.max_row + spacing, end_column=m.max_col)
+    for m in src_merges:
+        ws.merge_cells(start_row=m.min_row + spacing, start_column=m.min_col,
+                       end_row=m.max_row + spacing, end_column=m.max_col)
     new_date_row = date_row + spacing
     for c in (1, 7, 11):
         ws.cell(new_date_row, c).value = new_date
@@ -199,16 +221,17 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
     rounded = apply_round5(ws, dst_rows, selected_cols)
     wb.save(outfile)
     print("[ok] blok baru %s-%s dibuat (tanggal %s), %d sel diubah, %d dibulatkan ke kelipatan 5"
-          % (dst_h, dst_h + n_rows - 1, new_date, len(changed), rounded))
+          % (dst_h, dst_end, new_date, len(changed), rounded))
 
 
-def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run):
+def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run, outfile):
     headers = find_header_rows(ws)
     if not headers:
         sys.exit("Tidak ada blok 'HARGA ANTAM'.")
     src_h = headers[-1]
-    data_rows = list(range(src_h + 1, ws.max_row + 1))
-    print("[info] update di tempat | blok header %d | step %d/gram | target %s" % (src_h, step, sorted(selected_cols)))
+    src_end = last_data_row(ws, src_h)
+    data_rows = list(range(src_h + 1, src_end + 1))
+    print("[info] update di tempat | blok header %d-%d | step %d/gram | target %s" % (src_h, src_end, step, sorted(selected_cols)))
     if dry_run:
         print("[dry-run/update] baris yg akan diubah:")
         for r in data_rows:
@@ -230,7 +253,7 @@ def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run):
         return
     changed = apply_inplace(ws, wsv, data_rows, step, selected_cols, gram_filter)
     rounded = apply_round5(ws, data_rows, selected_cols)
-    wb.save(args.file)
+    wb.save(outfile)
     print("[ok] blok terakhir diupdate: %d sel diubah, %d dibulatkan" % (len(changed), rounded))
 
 
@@ -374,7 +397,7 @@ def main():
         if args.mode == "add":
             do_add(ws, wb, wbv, args.step, selected_cols, gram_filter, args.date, args.dry_run, args.file)
         else:
-            do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run)
+            do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run, args.file)
 
     if not args.dry_run:
         # Screenshot dulu, sebelum Excel user dibuka (file lock bikin PNG kosong).
