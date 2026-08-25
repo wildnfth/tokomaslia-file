@@ -90,7 +90,11 @@ def send_one(channel, caption_override=None):
         "kirim_%s_%s.png" % (channel, datetime.now().strftime("%H%M%S")),
     )
     try:
-        out = render(xlsx, spec["sheet"], None, tmp)
+        try:
+            out = render(xlsx, spec["sheet"], None, tmp)
+        except Exception as e:
+            print("[kirim] screenshot gagal (%s), retry 1x instance Excel baru" % e)
+            out = render(xlsx, spec["sheet"], None, tmp)
         size = os.path.getsize(out)
         print("[kirim] %s | %s | %d bytes | %s" % (channel, spec["sheet"], size, caption))
         send_py = os.path.join(HERE, "send_discord.py")

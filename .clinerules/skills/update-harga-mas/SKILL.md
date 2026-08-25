@@ -140,6 +140,8 @@ python scripts/kirim_harga_discord.py --channel harga-perhiasan    # setelah upd
 ```
 
 Jangan kirim saat `--dry-run`. Jangan buka Excel sebelum kirim.
+Kalau `CopyPicture method of Range class failed`: jalankan perintah resmi
+yang sama 1x lagi (lihat `kirim-harga-discord`). Jangan tulis screenshot sendiri.
 
 ---
 

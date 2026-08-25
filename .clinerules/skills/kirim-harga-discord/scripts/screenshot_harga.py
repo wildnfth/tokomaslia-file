@@ -119,8 +119,26 @@ def _grab_clipboard_image(retries=3, delay=0.35):
     return None
 
 
+def _copy_picture(rng, retries=3, delay=0.5):
+    """CopyPicture sering gagal di instance Excel COM pertama (0x800A03EC)."""
+    last = None
+    for i in range(retries):
+        try:
+            rng.CopyPicture(XL_SCREEN, XL_BITMAP)
+            return
+        except Exception as e:
+            last = e
+            print("[screenshot] CopyPicture gagal (%s) retry %d/%d" % (e, i + 1, retries))
+            time.sleep(delay * (i + 1))
+    raise last
+
+
 def _export_via_clipboard(rng, out_path):
-    rng.CopyPicture(XL_SCREEN, XL_BITMAP)
+    try:
+        _copy_picture(rng)
+    except Exception as e:
+        print("[screenshot] CopyPicture COM error, fallback: %s" % e)
+        return False
     img = _grab_clipboard_image()
     if img is None:
         return False
@@ -130,7 +148,7 @@ def _export_via_clipboard(rng, out_path):
 
 def _export_via_chart(ws, rng, out_path):
     """Cadangan jika Pillow tidak ada / clipboard gagal."""
-    rng.CopyPicture(XL_SCREEN, XL_BITMAP)
+    _copy_picture(rng)
     time.sleep(0.4)
     chart = ws.ChartObjects().Add(0, 0, rng.Width, rng.Height)
     try:
