@@ -303,6 +303,14 @@ def do_json(ws, wb, json_file, dry_run, outfile):
     print("[ok] EMAS diupdate: %d sel, tanggal %s" % (changed, new_date))
 
 
+def run_cek_anomali(xlsx_path):
+    """Cek 2026>2025>RANDOM pada blok terakhir. 0 = bersih, 1 = ada anomali."""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cek_anomali_antam.py")
+    print("[cek] urutan ANTAM 2026>2025>RANDOM (blok terakhir)")
+    r = subprocess.run([sys.executable, script, xlsx_path, "--last", "1"])
+    return 0 if r.returncode == 0 else 1
+
+
 def git_commit_push(message):
     try:
         subprocess.run([GIT, "add", "-A"], cwd=REPO, check=True)
@@ -387,6 +395,8 @@ def main():
         sys.exit("Sheet '%s' tidak ada. Ada: %s" % (args.sheet, wb.sheetnames))
     ws = wb[args.sheet]
 
+    labels = set()
+    anomali = 0
     if args.mode == "json":
         do_json(ws, wb, args.json, args.dry_run, args.file)
     else:
@@ -398,10 +408,14 @@ def main():
             do_add(ws, wb, wbv, args.step, selected_cols, gram_filter, args.date, args.dry_run, args.file)
         else:
             do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run, args.file)
+        if not args.dry_run:
+            anomali = run_cek_anomali(args.file)
 
     if not args.dry_run:
         # Screenshot dulu, sebelum Excel user dibuka (file lock bikin PNG kosong).
-        if args.send_discord:
+        if args.send_discord and anomali:
+            print("[skip discord] ada anomali urutan ANTAM — perbaiki dulu.")
+        elif args.send_discord:
             sheet = "EMAS" if args.mode == "json" else args.sheet
             if args.discord_channel:
                 channel = args.discord_channel
