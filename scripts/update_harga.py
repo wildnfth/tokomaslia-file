@@ -98,6 +98,21 @@ def snap5(v):
     return int(round(v / 5.0) * 5)
 
 
+def snap5_dir(v, step):
+    """Bulatkan ke kelipatan 5 SEARAH step (turun -> ke bawah, naik -> ke atas).
+    Dipakai untuk gramasi 0.5 dengan step ganjil, supaya semua merk bareng."""
+    if step >= 0:
+        return int(-(-v // 5) * 5)
+    return int(v // 5 * 5)
+
+
+def new_value(base, g, step):
+    nv = base + step * g
+    if g == 0.5 and step % 2 != 0:
+        nv = snap5_dir(nv, step)
+    return nv
+
+
 def last_data_row(ws, start):
     """Baris terakhir yang masih berisi nilai di kolom A-M, dari header blok."""
     last = start
@@ -135,7 +150,7 @@ def apply_inplace(ws, wsv, rows, step, selected_cols, gram_filter):
                 base = float(base)
             except (TypeError, ValueError):
                 continue
-            nv = base + step * g
+            nv = new_value(base, g, step)
             changed.append((r, c, g, base, nv))
             ws.cell(r, c).value = nv
     return changed
@@ -191,7 +206,7 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
                     base = float(v)
                 except (TypeError, ValueError):
                     continue
-                print("  dr %d | gram %s | col %s | %s -> %s" % (dr, g, c, base, base + step * g))
+                print("  dr %d | gram %s | col %s | %s -> %s" % (dr, g, c, base, new_value(base, g, step)))
         print("[dry-run] selesai (belum disimpan).")
         return
 
@@ -248,7 +263,7 @@ def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run, outfile):
                     base = float(v)
                 except (TypeError, ValueError):
                     continue
-                print("  row %d | gram %s | col %s | %s -> %s" % (r, g, c, base, base + step * g))
+                print("  row %d | gram %s | col %s | %s -> %s" % (r, g, c, base, new_value(base, g, step)))
         print("[dry-run] selesai (belum disimpan).")
         return
     changed = apply_inplace(ws, wsv, data_rows, step, selected_cols, gram_filter)
