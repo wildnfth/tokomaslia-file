@@ -212,6 +212,10 @@ def render(xlsx_path, sheet, range_str, out_path):
         if range_str:
             rng = ws.Range(range_str)
             addr = rng.Address
+        elif str(ws.Name).strip().upper() == "EMAS":
+            # Perhiasan: kiri A1:D15 saja (tanpa blok kembar E:H / baris POT).
+            rng = ws.Range("A1:D15")
+            addr = rng.Address
         else:
             rng, addr = _last_block_range(ws)
         print("[screenshot] range %s!%s" % (sheet, addr))

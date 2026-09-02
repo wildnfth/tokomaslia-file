@@ -42,6 +42,7 @@ CHANNEL_MAP = {
         "file": "TEMPLATE HARGA MAS2.xlsx",
         "sheet": "EMAS",
         "prefix": "Harga Perhiasan",
+        "range": "A1:D15",  # kiri saja, tanpa blok kembar / POT
     },
 }
 
@@ -91,10 +92,10 @@ def send_one(channel, caption_override=None):
     )
     try:
         try:
-            out = render(xlsx, spec["sheet"], None, tmp)
+            out = render(xlsx, spec["sheet"], spec.get("range"), tmp)
         except Exception as e:
             print("[kirim] screenshot gagal (%s), retry 1x instance Excel baru" % e)
-            out = render(xlsx, spec["sheet"], None, tmp)
+            out = render(xlsx, spec["sheet"], spec.get("range"), tmp)
         size = os.path.getsize(out)
         print("[kirim] %s | %s | %d bytes | %s" % (channel, spec["sheet"], size, caption))
         send_py = os.path.join(HERE, "send_discord.py")
