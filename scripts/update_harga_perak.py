@@ -147,7 +147,9 @@ def main():
     ap.add_argument('--step', type=float, required=True,
                     help='penurunan harga per gram (rb/gr, positif = turun)')
     ap.add_argument('--dry-run', action='store_true')
-    ap.add_argument('--no-backup', action='store_true')
+    ap.add_argument('--backup', action='store_true',
+                    help='Buat file *_BACKUP_*.xlsx. Default off; revert lewat git.')
+    ap.add_argument('--no-backup', action='store_true', help=argparse.SUPPRESS)
     ap.add_argument('--send-discord', action='store_true',
                     help='Kirim foto tabel ke channel Discord setelah update.')
     ap.add_argument('--discord-channel', default='harga-lm-perak',
@@ -222,8 +224,8 @@ def main():
         print('[dry-run] selesai (belum disimpan).')
         return
 
-    # ---- backup ----
-    if not args.no_backup:
+    # ---- backup (opt-in; default off — revert lewat git) ----
+    if args.backup:
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup = args.file.replace('.xlsx', '_BACKUP_%s.xlsx' % ts)
         shutil.copy2(args.file, backup)

@@ -382,7 +382,8 @@ def main():
     ap.add_argument("--json", default=None)
     ap.add_argument("--sheet", default="ANTAM")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--no-backup", action="store_true")
+    ap.add_argument("--backup", action="store_true", help="Buat file *_BACKUP_*.xlsx. Default off; revert lewat git.")
+    ap.add_argument("--no-backup", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--no-open", action="store_true")
     ap.add_argument("--no-git", action="store_true")
     ap.add_argument("--send-discord", action="store_true", help="Kirim foto tabel ke channel Discord setelah update.")
@@ -396,11 +397,11 @@ def main():
     if args.mode == "json" and not args.json:
         sys.exit("Mode json butuh --json <file>.")
 
-    if not args.no_backup and not args.dry_run:
+    if args.backup and not args.dry_run:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base, ext = os.path.splitext(args.file)
         shutil.copy2(args.file, "%s_BACKUP_%s%s" % (base, ts, ext))
-        print("[backup] dibuat otomatis.")
+        print("[backup] dibuat.")
 
     wb = load_workbook(args.file, data_only=False)
     wbv = load_workbook(args.file, data_only=True)

@@ -180,7 +180,8 @@ def main():
                     help="add=tambah blok baru (default), update=ubah blok terakhir di tempat")
     ap.add_argument("--sheet", default="ANTAM", help="Nama sheet (default ANTAM)")
     ap.add_argument("--dry-run", action="store_true", help="Cek & tampilkan rencana saja")
-    ap.add_argument("--no-backup", action="store_true", help="Tanpa backup otomatis")
+    ap.add_argument("--backup", action="store_true", help="Buat file *_BACKUP_*.xlsx. Default off; revert lewat git.")
+    ap.add_argument("--no-backup", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
 
     if not os.path.exists(args.file):
@@ -193,11 +194,11 @@ def main():
     if not selected_cols:
         sys.exit("Tidak ada target valid.")
 
-    if not args.no_backup and not args.dry_run:
+    if args.backup and not args.dry_run:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base, ext = os.path.splitext(args.file)
         shutil.copy2(args.file, "%s_BACKUP_%s%s" % (base, ts, ext))
-        print("[backup] dibuat otomatis.")
+        print("[backup] dibuat.")
 
     wb = load_workbook(args.file, data_only=False)
     wbv = load_workbook(args.file, data_only=True)
