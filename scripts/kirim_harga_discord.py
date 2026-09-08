@@ -20,8 +20,8 @@ import sys
 import tempfile
 from datetime import datetime
 
-# Path repo dikunci — salinan di folder skill jangan sampai baca xlsx yang salah.
-REPO = r"D:\TOKO MAS LIA\DOKUMEN"
+# Path repo dinamis — default ke direktori induk dari scripts/
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 HERE = os.path.join(REPO, "scripts")
 sys.path.insert(0, HERE)
 
