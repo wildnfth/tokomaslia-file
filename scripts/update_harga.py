@@ -14,7 +14,7 @@ MODE:
   json             : update sheet EMAS (perhiasan) dari file JSON.
 
 CONTOH:
-  update_harga.py <file> --date "25 AGUSTUS 2026" --step 10 --targets allam
+  update_harga.py <file> --date "25 AGUSTUS 2026" --step 10 --targets allmerk
   update_harga.py <file> --date "25 AGUSTUS 2026" --step 10            # ANTAM aja
   update_harga.py <file> --mode update --targets ubs --step 30
   update_harga.py <file> --mode update --targets galeri24 --step 25
@@ -66,7 +66,7 @@ def resolve_columns(spec):
         spec = "antam"
     for t in spec.split(","):
         t = t.strip().lower()
-        if t in ("allam", "all", "semua"):
+        if t in ("allmerk", "all", "semua"):
             for name in ANTAM_NAMES:
                 labels.add(name); cols.extend(TARGET_MAP[name])
             labels.add("galeri24"); cols.extend(TARGET_MAP["galeri24"])
