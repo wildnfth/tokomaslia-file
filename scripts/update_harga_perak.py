@@ -84,7 +84,7 @@ def apply_thick_borders(ws, start):
 
     - FRAME luar  : baris start..start+13, kolom 1-5.
     - GRUP MEREK  : kiri  (A-B): STAR SILVER 103-107, ANTAM 108-109, LOTUS 110-114
-                    kanan (D-E): MT 103-108, SIMBA 110-111, EURO 113-114
+                    kanan (D-E): MT 103-108, SIMBA 110-112 (judul+1kg+500gr), EURO 113-114
       (relatif thd start).
     Catatan penting: writer openpyxl men-collapse border sel merged (non-anchor)
     ke style ANCHOR saat save. Karena itu border tebal untuk sel yang ada di dalam
@@ -134,7 +134,7 @@ def apply_thick_borders(ws, start):
     box(7, 8, 1, 2)    # ANTAM
     box(9, 13, 1, 2)   # LOTUS
     box(2, 7, 4, 5)    # MT
-    box(9, 10, 4, 5)   # SIMBA
+    box(9, 11, 4, 5)   # SIMBA (judul + 1 kg + 500 gr)
     box(12, 13, 4, 5)  # EURO
 
 
