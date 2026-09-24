@@ -35,11 +35,35 @@ def _cell_text(value):
     return value.strip().upper() if isinstance(value, str) else ""
 
 
+def _cell_nonempty(cell):
+    """True jika sel ada isinya — termasuk sel anggota merged range.
+
+    PELAJARAN (24 SEP 2026): baris footer 'LM PERAK' (A216:E219) merged 4 baris,
+    valuenya cuma ada di anchor A216; B216:E216 + baris 217-219 Value-nya None
+    semua. Detektor baris-terakhir yang cuma cek Value mengira blok berakhir di
+    baris 216, padahal teks font 36pt-nya (center vertikal) duduk di 217-218 —
+    hasil screenshot kepotong, teks LM PERAK ga ke-ss.
+    """
+    try:
+        if cell.Value is not None:
+            return True
+    except Exception:
+        return False
+    try:
+        if cell.MergeCells:
+            area = cell.MergeArea
+            if area.Cells(1, 1).Value is not None:
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def _last_nonempty_row(ws, start_row, end_row, last_col):
     r = end_row
     while r > start_row:
         for c in range(1, last_col + 1):
-            if ws.Cells(r, c).Value is not None:
+            if _cell_nonempty(ws.Cells(r, c)):
                 return r
         r -= 1
     return start_row
