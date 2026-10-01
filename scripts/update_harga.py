@@ -13,6 +13,16 @@ MODE:
   update           : UBAH harga blok terakhir DI TEMPAT (tanpa blok baru).
   json             : update sheet EMAS (perhiasan) dari file JSON.
 
+OPSI --set (nilai ABSOLUT, bukan step) — untuk revisi 1 sel / beberapa sel / beberapa gram:
+  Bentuk: --set "target:gram=nilai"   (boleh diulang, atau dipisah koma)
+  target : retro | random | 2025 | 2026 | galeri24 | ubs
+  gram   : 0.5 | 1 | 2 | 3 | 4 | 5 | 10 | 25 | 50 | 100
+  nilai  : ribuan Excel (25450) atau rupiah bertitik (25.450.000) — keduanya sama.
+           "-" atau "SOLD" menulis string apa adanya.
+  Cell yang di-set TIDAK ikut dibulatkan ke kelipatan 5 (nilai dianggap final).
+  Kalau --set dipakai tanpa --step, step otomatis 0 (harga lain disalin apa adanya).
+  Kalau --set dipakai tanpa --mode dan tanpa --date, mode otomatis `update`.
+
 CONTOH:
   update_harga.py <file> --date "25 AGUSTUS 2026" --step 10 --targets allmerk
   update_harga.py <file> --date "25 AGUSTUS 2026" --step 10            # ANTAM aja
@@ -20,6 +30,13 @@ CONTOH:
   update_harga.py <file> --mode update --targets galeri24 --step 25
   update_harga.py <file> --mode update --grams "1,5" --step 40
   update_harga.py <file> --json perhiasan.json
+
+  # revisi spesifik (nilai absolut, edit di tempat):
+  update_harga.py <file> --set "2026:10=25450"
+  update_harga.py <file> --set "2026:10=25450,2026:25=63375,2026:100=252500"
+  update_harga.py <file> --set "2026:25=63.375.000" --set "ubs:5=12175"
+  update_harga.py <file> --date "1 OKTOBER 2026" --set "random:100=245500"   # blok baru + override
+
   # selalu mulai dgn --dry-run
 """
 import argparse
@@ -156,10 +173,13 @@ def apply_inplace(ws, wsv, rows, step, selected_cols, gram_filter):
     return changed
 
 
-def apply_round5(ws, rows, selected_cols):
+def apply_round5(ws, rows, selected_cols, skip=None):
+    skip = skip or set()
     n = 0
     for r in rows:
         for c in selected_cols:
+            if (r, c) in skip:
+                continue
             gsrc = ws.cell(r, GRAM_COL[c]).value
             try:
                 float(gsrc)
@@ -175,7 +195,83 @@ def apply_round5(ws, rows, selected_cols):
     return n
 
 
-def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, outfile):
+def parse_value(raw):
+    """Nilai dari --set. '25.450.000' (rupiah bertitik) -> 25450 (ribuan).
+    '25450' -> 25450. '-' / 'SOLD' -> string apa adanya."""
+    s = raw.strip()
+    if s in ("-", ""):
+        return "-"
+    if s.upper() in ("SOLD", "KOSONG"):
+        return s.upper()
+    cleaned = s.replace("Rp", "").replace("rp", "").replace(" ", "")
+    if "." in cleaned:
+        digits = cleaned.replace(".", "")
+        if digits.isdigit():
+            return int(round(int(digits) / 1000.0))
+    try:
+        f = float(cleaned)
+    except ValueError:
+        return s
+    return int(f) if f == int(f) else f
+
+
+def parse_sets(specs):
+    """--set 'target:gram=nilai'. specs = list of string (tiap string boleh
+    berisi beberapa item dipisah koma). Return list (target, gram, nilai, raw)."""
+    out = []
+    for spec in specs or []:
+        for item in spec.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            if "=" not in item:
+                print("[warn] --set tidak valid (harus target:gram=nilai):", item)
+                continue
+            lhs, raw = item.split("=", 1)
+            if ":" not in lhs:
+                print("[warn] --set tidak valid (harus target:gram=nilai):", item)
+                continue
+            tgt, gram_s = lhs.split(":", 1)
+            tgt = tgt.strip().lower()
+            if tgt not in TARGET_MAP:
+                print("[warn] target --set tidak dikenal (pakai: %s):" % "/".join(sorted(TARGET_MAP)), tgt)
+                continue
+            try:
+                g = float(gram_s.strip())
+            except ValueError:
+                print("[warn] gram --set tidak valid:", gram_s)
+                continue
+            out.append((tgt, g, parse_value(raw), item))
+    return out
+
+
+def apply_sets(ws, rows, sets, dry_run=False):
+    """Tulis nilai ABSOLUT ke sel target. Return (changes, touched_cells)."""
+    changes, touched = [], set()
+    for tgt, g, val, raw in sets:
+        for c in TARGET_MAP[tgt]:
+            hit = False
+            for r in rows:
+                try:
+                    rg = float(ws.cell(r, GRAM_COL[c]).value)
+                except (TypeError, ValueError):
+                    continue
+                if rg != g:
+                    continue
+                hit = True
+                touched.add((r, c))
+                old = ws.cell(r, c).value
+                if old != val:
+                    changes.append((r, c, tgt, g, old, val, raw))
+                    if not dry_run:
+                        ws.cell(r, c).value = val
+            if not hit:
+                print("[warn] --set %s: gram %s tidak ada di blok target" % (tgt, g))
+    return changes, touched
+
+
+
+def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, outfile, sets=None):
     headers = find_header_rows(ws)
     if not headers:
         sys.exit("Tidak ada blok 'HARGA ANTAM'.")
@@ -207,6 +303,10 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
                 except (TypeError, ValueError):
                     continue
                 print("  dr %d | gram %s | col %s | %s -> %s" % (dr, g, c, base, new_value(base, g, step)))
+        if sets:
+            print("[dry-run/add] override --set pada blok baru:")
+            for tgt, g, val, raw in sets:
+                print("  %-9s gram %-5s -> %s   (dari '%s')" % (tgt, g, val, raw))
         print("[dry-run] selesai (belum disimpan).")
         return
 
@@ -233,13 +333,16 @@ def do_add(ws, wb, wsv, step, selected_cols, gram_filter, new_date, dry_run, out
     for c in (1, 7, 11):
         ws.cell(new_date_row, c).value = new_date
     changed = apply_inplace(ws, wsv, dst_rows, step, selected_cols, gram_filter)
-    rounded = apply_round5(ws, dst_rows, selected_cols)
+    over_changes, over_touched = apply_sets(ws, dst_rows, sets or [])
+    rounded = apply_round5(ws, dst_rows, selected_cols, skip=over_touched)
     wb.save(outfile)
     print("[ok] blok baru %s-%s dibuat (tanggal %s), %d sel diubah, %d dibulatkan ke kelipatan 5"
           % (dst_h, dst_end, new_date, len(changed), rounded))
+    for r, c, tgt, g, old, new, raw in over_changes:
+        print("  [set] row %d | %s gram %s (col %d): %s -> %s" % (r, tgt, g, c, old, new))
 
 
-def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run, outfile):
+def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run, outfile, sets=None):
     headers = find_header_rows(ws)
     if not headers:
         sys.exit("Tidak ada blok 'HARGA ANTAM'.")
@@ -248,28 +351,45 @@ def do_update(ws, wb, wsv, step, selected_cols, gram_filter, dry_run, outfile):
     data_rows = list(range(src_h + 1, src_end + 1))
     print("[info] update di tempat | blok header %d-%d | step %d/gram | target %s" % (src_h, src_end, step, sorted(selected_cols)))
     if dry_run:
-        print("[dry-run/update] baris yg akan diubah:")
-        for r in data_rows:
-            for c in selected_cols:
-                g = ws.cell(r, GRAM_COL[c]).value
-                try:
-                    g = float(g)
-                except (TypeError, ValueError):
-                    continue
-                if gram_filter is not None and g not in gram_filter:
-                    continue
-                v = ws.cell(r, c).value
-                try:
-                    base = float(v)
-                except (TypeError, ValueError):
-                    continue
-                print("  row %d | gram %s | col %s | %s -> %s" % (r, g, c, base, new_value(base, g, step)))
+        if sets and step == 0:
+            print("[dry-run/update] step 0 + --set: harga lain disalin apa adanya, hanya --set yang berubah:")
+        else:
+            print("[dry-run/update] baris yg akan diubah:")
+            for r in data_rows:
+                for c in selected_cols:
+                    g = ws.cell(r, GRAM_COL[c]).value
+                    try:
+                        g = float(g)
+                    except (TypeError, ValueError):
+                        continue
+                    if gram_filter is not None and g not in gram_filter:
+                        continue
+                    v = ws.cell(r, c).value
+                    try:
+                        base = float(v)
+                    except (TypeError, ValueError):
+                        continue
+                    nv = new_value(base, g, step)
+                    if nv != base:
+                        print("  row %d | gram %s | col %s | %s -> %s" % (r, g, c, base, nv))
+        if sets:
+            print("[dry-run/update] override --set (nilai absolut):")
+            ch, _ = apply_sets(ws, data_rows, sets, dry_run=True)
+            for r, c, tgt, g, old, new, raw in ch:
+                print("  row %d | %s gram %s (col %d) | %s -> %s   (dari '%s')" % (r, tgt, g, c, old, new, raw))
+            if not ch:
+                print("  (semua nilai --set sudah sama — tidak ada yang berubah)")
         print("[dry-run] selesai (belum disimpan).")
         return
     changed = apply_inplace(ws, wsv, data_rows, step, selected_cols, gram_filter)
-    rounded = apply_round5(ws, data_rows, selected_cols)
+    over_changes, over_touched = apply_sets(ws, data_rows, sets or [])
+    rounded = apply_round5(ws, data_rows, selected_cols, skip=over_touched)
     wb.save(outfile)
-    print("[ok] blok terakhir diupdate: %d sel diubah, %d dibulatkan" % (len(changed), rounded))
+    real = [x for x in changed if x[3] != x[4]]
+    print("[ok] blok terakhir diupdate: %d sel diubah, %d dibulatkan" % (len(real), rounded))
+    for r, c, tgt, g, old, new, raw in over_changes:
+        print("  [set] row %d | %s gram %s (col %d): %s -> %s" % (r, tgt, g, c, old, new))
+
 
 
 def do_json(ws, wb, json_file, dry_run, outfile):
@@ -381,6 +501,9 @@ def main():
     ap.add_argument("--grams", default=None)
     ap.add_argument("--json", default=None)
     ap.add_argument("--sheet", default="ANTAM")
+    ap.add_argument("--set", dest="sets", action="append", default=None,
+                    help="Set nilai ABSOLUT: 'target:gram=nilai' (mis. '2026:10=25450'). "
+                         "Boleh diulang atau dipisah koma. Target: retro/random/2025/2026/galeri24/ubs.")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--backup", action="store_true", help="Buat file *_BACKUP_*.xlsx. Default off; revert lewat git.")
     ap.add_argument("--no-backup", action="store_true", help=argparse.SUPPRESS)
@@ -388,7 +511,20 @@ def main():
     ap.add_argument("--no-git", action="store_true")
     ap.add_argument("--send-discord", action="store_true", help="Kirim foto tabel ke channel Discord setelah update.")
     ap.add_argument("--discord-channel", default=None, help="Nama channel di discord_config.json. Default: harga-lm-emas (LM) / harga-perhiasan (EMAS).")
+    ap.add_argument("--caption", default=None, help="Caption Discord custom (dipakai dgn --send-discord).")
     args = ap.parse_args()
+
+    sets = parse_sets(args.sets)
+
+    # --set = revisi nilai absolut -> default mode update, step 0 (harga lain disalin).
+    if args.sets and not sets:
+        sys.exit("Semua --set tidak valid — periksa format 'target:gram=nilai' "
+                 "(target: retro/random/2025/2026/galeri24/ubs).")
+    if sets and args.mode == "add" and not args.date:
+        args.mode = "update"
+        print("[info] --set terdeteksi tanpa --date -> mode 'update' (edit di tempat).")
+    if sets and "--step" not in sys.argv:
+        args.step = 0
 
     if not os.path.exists(args.file):
         sys.exit("File tidak ditemukan: %s" % args.file)
@@ -421,9 +557,9 @@ def main():
         if not selected_cols:
             sys.exit("Tidak ada target valid.")
         if args.mode == "add":
-            do_add(ws, wb, wbv, args.step, selected_cols, gram_filter, args.date, args.dry_run, args.file)
+            do_add(ws, wb, wbv, args.step, selected_cols, gram_filter, args.date, args.dry_run, args.file, sets=sets)
         else:
-            do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run, args.file)
+            do_update(ws, wb, wbv, args.step, selected_cols, gram_filter, args.dry_run, args.file, sets=sets)
         if not args.dry_run:
             anomali = run_cek_anomali(args.file)
 
@@ -439,7 +575,7 @@ def main():
                 channel = "harga-perhiasan"
             else:
                 channel = "harga-lm-emas"
-            caption = "Update harga %s - %s" % (sheet, args.date or "EMAS")
+            caption = args.caption or "Update harga %s - %s" % (sheet, args.date or "EMAS")
             send_discord_snapshot(args.file, sheet, caption, channel)
         if not args.no_open:
             open_excel(args.file)
