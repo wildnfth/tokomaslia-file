@@ -232,7 +232,8 @@ def perform_commit_verify(mcp, design_id, ops, checks):
     for label, old_t, new_t in checks:
         n_old = sum(1 for t in texts2.values() if t == old_t)
         n_new = sum(1 for t in texts2.values() if t == new_t)
-        good = n_old == 0 and n_new >= 1
+        # kotak yang memang tidak berubah (old == new): cukup pastikan teksnya ada
+        good = (n_new >= 1) if old_t == new_t else (n_old == 0 and n_new >= 1)
         print("  %-12s lama tersisa=%d baru=%d %s" % (label, n_old, n_new, "OK" if good else "GAGAL"))
         ok = ok and good
     if txn2:
