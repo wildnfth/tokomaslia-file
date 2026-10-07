@@ -446,12 +446,19 @@ def run_cek_anomali(xlsx_path):
     return 0 if r.returncode == 0 else 1
 
 
-def git_commit_push(message):
+def git_commit_push(message, files=None):
+    """Commit & push HANYA file harga. Jangan pernah 'git add -A' — repo ini
+    punya banyak file non-harga (ABSENSI, JADWAL, SLIP GAJI, PERAK, dll.) yang
+    tidak boleh ikut ter-commit oleh agent. files = list nama file relatif."""
+    if not files:
+        print("[git] skip: tidak ada file yang di-commit.")
+        return
     try:
-        subprocess.run([GIT, "add", "-A"], cwd=REPO, check=True)
+        for f in files:
+            subprocess.run([GIT, "add", "--", f], cwd=REPO, check=True)
         subprocess.run([GIT, "commit", "-m", message], cwd=REPO, check=True)
         subprocess.run([GIT, "push", "origin", "main"], cwd=REPO, check=True)
-        print("[git] commit & push selesai.")
+        print("[git] commit & push selesai: %s" % ", ".join(files))
     except subprocess.CalledProcessError as e:
         print("[warn] git gagal:", e)
 
@@ -580,7 +587,8 @@ def main():
         if not args.no_open:
             open_excel(args.file)
         if not args.no_git:
-            git_commit_push("update harga %s - %s" % (args.date or "EMAS", ", ".join(sorted(labels or ["perhiasan"]))))
+            git_commit_push("update harga %s - %s" % (args.date or "EMAS", ", ".join(sorted(labels or ["perhiasan"]))),
+                            files=[args.file])
     else:
         print("[dry-run] selesai, tidak ada perubahan disimpan.")
 
