@@ -357,13 +357,13 @@ def read_excel_block(xlsx):
 def identify_box(text):
     """Tebak kotak harga mana dari isi teksnya. Return nama brand atau None."""
     lines = [ln for ln in text.splitlines() if ln.strip()]
-    if len(lines) < 5 or not all(re.match(r"^\d+(\.\d+)? gr : ", ln) for ln in lines):
+    if len(lines) < 5 or not all(re.match(r"^\d+(?:[.,]\d+)? gr : ", ln) for ln in lines):
         return None
     if any(ln.startswith("4 gr : ") for ln in lines):
         return "UBS"
     if len(lines) == 7 and lines[0].startswith("1 gr : "):
         return "GALERI24"
-    if len(lines) == 9 and lines[0].startswith("0.5 gr : "):
+    if len(lines) == 9 and re.match(r"^0[.,]5 gr : ", lines[0]):
         return "RETRO" if lines[-1].startswith("100 gr : SOLD") else "ANTAM"
     return None
 
@@ -371,7 +371,7 @@ def box_from_map(mapping, labels):
     """Susun teks kotak dari map {gram: rupiah_str}, ikut urutan label yang ada."""
     out = []
     for lab in labels:
-        g = float(lab.split(" ")[0])
+        g = float(lab.split(" ")[0].replace(",", "."))
         v = mapping.get(round(g, 1))
         if v is None:
             return None
